@@ -1,0 +1,18 @@
+# Keep line endings consistent between Windows and Mac.
+* text=auto
+*.cs text diff=csharp
+*.unity text eol=lf
+*.prefab text eol=lf
+*.asset text eol=lf
+*.meta text eol=lf
+*.mat text eol=lf
+
+# Art and audio files are binary.
+*.png binary
+*.jpg binary
+*.psd binary
+*.fbx binary
+*.blend binary
+*.wav binary
+*.mp3 binary
+*.ogg binary
