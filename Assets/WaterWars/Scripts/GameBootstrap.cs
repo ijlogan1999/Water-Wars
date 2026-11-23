@@ -23,6 +23,7 @@ namespace WaterWars
     {
         static GameBootstrap instance;
         Transform world;
+        Transform mapRoot;
 
         // Safety net: if you press Play in an empty, unsaved scene, start the game anyway.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -57,6 +58,17 @@ namespace WaterWars
             instance.StartCoroutine(instance.Rebuild());
         }
 
+        /// Throw away the neighborhood and generate a new one with 3 new houses
+        /// (used between rounds when Tuning.NewHousesEachRound is on).
+        public static MapData RegenerateMap()
+        {
+            var b = instance;
+            if (b.mapRoot != null) DestroyImmediate(b.mapRoot.gameObject);
+            b.mapRoot = new GameObject("Neighborhood").transform;
+            b.mapRoot.SetParent(b.world, false);
+            return MapBuilder.Build(b.mapRoot);
+        }
+
         IEnumerator Rebuild()
         {
             if (world != null) Destroy(world.gameObject);
@@ -69,7 +81,9 @@ namespace WaterWars
         {
             world = new GameObject("World").transform;
             SetUpLighting(world);
-            var map = MapBuilder.Build(world);
+            mapRoot = new GameObject("Neighborhood").transform;
+            mapRoot.SetParent(world, false);
+            var map = MapBuilder.Build(mapRoot);
 
             var rmGo = new GameObject("Round Manager");
             rmGo.transform.SetParent(world, false);

@@ -17,6 +17,11 @@ namespace WaterWars
         public const int RoundsToWin = 7;         // First to 7 rounds.
         public const int SwapSidesAfterRound = 6; // Teams switch attack/defend after round 6.
 
+        // ---- Map -----------------------------------------------------------
+        // Every match picks 3 houses from the neighborhood. Set this to true to
+        // pick 3 new houses every ROUND instead (a new map each round).
+        public const bool NewHousesEachRound = false;
+
         // ---- Round timers --------------------------------------------------
         public const float BuyPhaseSeconds = 30f;     // "Allowance phase". Press Enter to skip it.
         public const float SuddenDeathBuySeconds = 8f;

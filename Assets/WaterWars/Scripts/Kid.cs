@@ -204,6 +204,20 @@ namespace WaterWars
                 reloadingToy.Ammo = reloadingToy.Def.TankShots;
                 reloadingToy = null;
             }
+            // Finish a burst that's in progress.
+            if (burstLeft > 0 && Time.time >= nextBurstShot)
+            {
+                var toy = Current;
+                if (!CanAct || toy.Ammo <= 0) burstLeft = 0;
+                else
+                {
+                    toy.Ammo--;
+                    burstLeft--;
+                    nextBurstShot = Time.time + toy.Def.BurstInterval;
+                    FireOneShot(toy.Def, AimDirection);
+                    if (toy.Ammo <= 0 && burstLeft == 0) StartReload();
+                }
+            }
             // Smoothly move the eye up/down when crouching.
             var e = Eye.localPosition;
             e.y = Mathf.MoveTowards(e.y, eyeHeight, Time.deltaTime * 6f);
@@ -213,7 +227,8 @@ namespace WaterWars
             {
                 var r = heldToy.GetComponent<Renderer>();
                 if (r != null) r.sharedMaterial = Shapes.Mat(Current.Def.ViewColor);
-                heldToy.localScale = UsingPrimary && Primary != null ? new Vector3(0.16f, 0.22f, 0.8f) : new Vector3(0.12f, 0.15f, 0.45f);
+                float len = Current.Def.ViewLength * 1.3f;
+                heldToy.localScale = new Vector3(0.1f + len * 0.1f, 0.12f + len * 0.12f, len);
             }
         }
 
@@ -292,13 +307,18 @@ namespace WaterWars
             if (UsingPrimary == primary) return;
             UsingPrimary = primary;
             reloadingToy = null; // switching cancels a reload
+            burstLeft = 0;
+            Zoomed = false;
             nextShotTime = Mathf.Max(nextShotTime, Time.time + 0.25f);
         }
+
+        /// True while a scoped toy is zoomed in (set by whoever controls the kid).
+        public bool Zoomed;
 
         /// Try to shoot in a direction. `triggerJustPressed` matters for click-per-shot toys like the pistol.
         public bool TryFire(Vector3 aimDirection, bool triggerJustPressed)
         {
-            if (!CanAct || Reloading) return false;
+            if (!CanAct || Reloading || burstLeft > 0) return false;
             var toy = Current;
             if (!toy.Def.HoldToFire && !triggerJustPressed) return false;
             if (Time.time < nextShotTime) return false;
@@ -306,22 +326,36 @@ namespace WaterWars
 
             nextShotTime = Time.time + 1f / toy.Def.ShotsPerSecond;
             toy.Ammo--;
-
-            // Moving, jumping and crouching change how steady your aim is.
-            float spread = toy.Def.SpreadDegrees;
-            if (HorizontalSpeed > Tuning.WalkSpeed + 0.5f || !Grounded) spread += toy.Def.MovingSpreadDegrees;
-            if (Crouching) spread *= 0.7f;
-            Vector3 dir = WaterShots.Wobble(aimDirection, spread);
-
-            if (toy.Def.Arcing)
-                WaterShots.LaunchGlob(this, Eye.position + dir * 0.6f - Vector3.up * 0.08f, dir * toy.Def.WaterSpeed,
-                    toy.Def.WaterGravity, toy.Def.SoakPerHit, toy.Def.Range, toy.Def.FalloffStart, 0f, 0.14f);
-            else
-                WaterShots.Instant(this, Eye.position, dir, toy.Def);
-
-            if (toy.Ammo <= 0) StartReload();
-            if (OnFired != null) OnFired();
+            FireOneShot(toy.Def, aimDirection);
+            // Burst toys fire the rest of the burst over the next few frames (see Update).
+            burstLeft = toy.Def.Burst - 1;
+            nextBurstShot = Time.time + toy.Def.BurstInterval;
+            if (toy.Ammo <= 0 && burstLeft == 0) StartReload();
             return true;
+        }
+
+        int burstLeft;
+        float nextBurstShot;
+
+        void FireOneShot(ToyDef def, Vector3 aimDirection)
+        {
+            // Moving, jumping, crouching and scoping change how steady your aim is.
+            float spread = Zoomed && def.ZoomFov > 0f ? def.ZoomedSpreadDegrees : def.SpreadDegrees;
+            if (HorizontalSpeed > Tuning.WalkSpeed + 0.5f || !Grounded) spread += def.MovingSpreadDegrees;
+            if (Crouching) spread *= 0.7f;
+
+            // Spray toys fire several drops at once. Each drop wobbles on its own.
+            Vector3 center = WaterShots.Wobble(aimDirection, def.Pellets > 1 ? 0f : spread);
+            for (int i = 0; i < def.Pellets; i++)
+            {
+                Vector3 dir = def.Pellets > 1 ? WaterShots.Wobble(center, spread) : center;
+                if (def.Arcing)
+                    WaterShots.LaunchGlob(this, Eye.position + dir * 0.6f - Vector3.up * 0.08f, dir * def.WaterSpeed,
+                        def.WaterGravity, def.SoakPerHit, def.Range, def.FalloffStart, 0f, def.Pellets > 1 ? 0.1f : 0.14f);
+                else
+                    WaterShots.Instant(this, Eye.position, dir, def, i == 0);
+            }
+            if (OnFired != null) OnFired();
         }
 
         public void StartReload()
@@ -417,8 +451,11 @@ namespace WaterWars
             if (!survivedLastRound)
             {
                 Primary = null;
+                Sidearm = new ToyState(ToyDef.SquirtPistol);
                 Towel = 0f;
             }
+            burstLeft = 0;
+            Zoomed = false;
             if (Primary != null) Primary.Ammo = Primary.Def.TankShots;
             Sidearm.Ammo = Sidearm.Def.TankShots;
             UsingPrimary = Primary != null;
@@ -439,6 +476,7 @@ namespace WaterWars
         public void StripGear()
         {
             Primary = null;
+            Sidearm = new ToyState(ToyDef.SquirtPistol);
             Towel = 0f;
             AbilityCharges = 0;
             UsingPrimary = false;

@@ -63,7 +63,8 @@ screen.
 | Ctrl or C | Crouch (steadier aim) |
 | Shift | Walk (steadier aim) |
 | R | Reload |
-| 1 / 2 | Pump-Action Soaker / Squirt Pistol |
+| Right click (hold) | Scope in (sniper toys) |
+| 1 / 2 | Main toy / sidearm |
 | Q | Hero ability |
 | E (hold) | Plant the Big One (attackers) or disarm it (defenders) |
 | G | Drop the Big One for a teammate |
@@ -75,19 +76,23 @@ screen.
 
 ## 5. What's in the prototype
 
-* **Map:** "Maple Court (grey-box)". Three houses. Attackers (you, at first)
-  spawn at the Fort House at the south end. Defenders hold House A (site A
-  is its Treehouse) and House B (site B is its open garage and driveway).
-  A hedge with three gaps splits the middle. Only garages and treehouses can
-  be entered. Sites are the light blue circles, with big **A** and **B**
-  labels floating above them.
+* **Map:** a generated neighborhood, "Maple Court": 24 houses on three
+  streets (Maple St, Birch Ln, Oak Dr) split by Elm Court down the middle.
+  **Every match picks 3 houses**: the attackers' house (they spawn on the
+  street out front) and two defender houses. Site **A** is a backyard
+  treehouse and site **B** is a garage with a back door into the yard. The
+  addresses show on screen while you shop. Backyards are fenced, so you reach
+  a site through narrow side yards between houses, fence gates, or the
+  garage: several ways in, each one a chokepoint. To get a new map every
+  round instead of every match, set `NewHousesEachRound = true` in
+  `Tuning.cs`.
 * **Soak meter:** 0 to 100. Face hits count double, leg hits count 0.75. At
   100 you're Soaked, sit on the curb, and watch a teammate until next round.
   No drying on its own mid-round.
 * **Towels:** Hand Towel ($4) absorbs 25 soak, Beach Towel ($10) absorbs 50.
-* **Water toys:** Squirt Pistol (free, instant hit, one click per shot) and
-  Pump-Action Soaker ($26, hold to fire, visible water that arcs and falls,
-  so aim a little high at long range). Normal reloads for now.
+* **Water toys:** 13 of them, one per genre weapon type, each based on a
+  real kind of water toy (see the table below). Hover over a toy in the
+  buy menu to see its stats. Normal reloads for now.
 * **Two placeholder heroes** (to be replaced by your own): Balloon Kid
   (Water Balloon: thrown, bursts and soaks nearby enemies) and Juice Kid
   (Juice Box: dries you and nearby teammates by 40). Abilities are bought
@@ -99,6 +104,26 @@ screen.
   $29), $2 per soak, $3 to every attacker on a plant, max $90.
 * **Bots:** 4 teammates and 5 opponents so you can play a full 5v5 alone.
 
+### The water toys, and what to model them on
+
+| Toy | Type | Cost | Based on (look this up for reference) |
+| --- | --- | --- | --- |
+| Squirt Pistol | Sidearm | Free | Classic clear plastic squirt pistol |
+| Twin Squirters | Sidearm | $5 | Two little dollar-store squirt pistols, one per hand |
+| Spray Bottle | Sidearm (close spray) | $4 | Trigger spray bottle / plant mister |
+| Bulb Blaster | Sidearm (heavy hitter) | $8 | Big squeeze-bulb water pistol |
+| Motor Squirter | SMG | $11 | Battery-powered motorized water gun |
+| Bottle Rocket Blaster | SMG (3-shot burst) | $14 | Blaster with an upside-down 2-liter soda bottle tank |
+| Watering Can | Shotgun | $9 | Metal garden watering can with a sprinkler head |
+| Bucket Toss | Shotgun (one huge slosh) | $12 | Plastic beach bucket |
+| Pump-Action Soaker | Rifle (arcing) | $26 | Pump-action water blaster with a big tank on top |
+| Pressure Rifle | Rifle (instant) | $28 | Air-pressure water rifle with a pressure chamber |
+| Pool Tube | Sniper (light) | $15 | Foam pool-noodle pump shooter |
+| Pressure Cannon | Sniper (heavy) | $40 | High-pressure blaster with a backpack tank |
+| Garden Hose Nozzle | Heavy | $30 | Pistol-grip hose nozzle with a hose reel backpack |
+
+All toy numbers live in `Toys.cs`.
+
 ## 6. How the code is organized
 
 Everything lives in `Assets/WaterWars/Scripts`. Each file starts with a
@@ -107,9 +132,10 @@ plain-English note about what it does.
 | File | What it does |
 | --- | --- |
 | `Tuning.cs` | **All the numbers.** Timers, prices, soak amounts, speeds, bot difficulty. Start here to change how the game feels. |
-| `Definitions.cs` | The water toys and placeholder heroes (names, costs, stats). |
+| `Toys.cs` | All 13 water toys: stats, costs, and the real toy each is based on. |
+| `Definitions.cs` | Teams and the placeholder heroes. |
 | `GameBootstrap.cs` | The starting point. Builds the light, map, kids, referee and HUD when you press Play. |
-| `MapBuilder.cs` | Builds the grey-box map out of blocks. Move a fence here and it moves in the game. |
+| `MapBuilder.cs` | Generates the neighborhood and picks the 3 houses for the match. |
 | `Kid.cs` | Anyone playing: body, Soak meter, towel, money, toys, moving and shooting. |
 | `PlayerController.cs` | Turns your mouse and keyboard into actions, and runs your camera. |
 | `BotBrain.cs` | The computer players. |

@@ -59,8 +59,8 @@ namespace WaterWars
             pitch = 0f;
             nextThink = Time.time + Random.Range(0f, 0.4f);
 
-            // Shopping: rifle first, then a towel, then ability charges.
-            rm.Buy(kid, ShopItem.PumpSoaker);
+            // Shopping: a main toy first, then a towel, then ability charges.
+            ShopForToys(rm);
             if (!rm.Buy(kid, ShopItem.BeachTowel)) rm.Buy(kid, ShopItem.HandTowel);
             while (rm.Buy(kid, ShopItem.Ability)) { }
 
@@ -76,6 +76,30 @@ namespace WaterWars
                 mySite = rm.AttackPlan;
                 holdSpot = mySite.AttackSpots[Random.Range(0, mySite.AttackSpots.Count)];
             }
+        }
+
+        /// Bots buy like a simple player: a rifle when rich, something cheaper when not,
+        /// and once in a while a sniper or a fun pick so you see every toy.
+        void ShopForToys(RoundManager rm)
+        {
+            if (kid.Primary != null) return;
+            int m = kid.Money;
+            ToyDef pick = null;
+            float roll = Random.value;
+            if (m >= 44 && roll < 0.2f) pick = ToyDef.PressureCannon;
+            else if (m >= 34 && roll < 0.3f) pick = ToyDef.GardenHose;
+            else if (m >= 30) pick = Random.value < 0.5f ? ToyDef.PumpSoaker : ToyDef.PressureRifle;
+            else if (m >= 16)
+            {
+                ToyDef[] mid = { ToyDef.BottleRocketBlaster, ToyDef.MotorSquirter, ToyDef.BucketToss, ToyDef.PoolTube };
+                pick = mid[Random.Range(0, mid.Length)];
+            }
+            else if (m >= 9)
+            {
+                ToyDef[] cheap = { ToyDef.WateringCan, ToyDef.BulbBlaster, ToyDef.TwinSquirters };
+                pick = cheap[Random.Range(0, cheap.Length)];
+            }
+            if (pick != null) rm.BuyToy(kid, pick);
         }
 
         void Update()
@@ -101,6 +125,7 @@ namespace WaterWars
             else
             {
                 target = null;
+                kid.Zoomed = false;
                 kid.SetCrouch(false);
                 DoJob(rm);
             }
@@ -161,6 +186,7 @@ namespace WaterWars
             kid.SetCrouch(Time.time < crouchUntil);
             kid.Move(Vector3.zero, 0f, false);
             if (kid.Primary != null && !kid.UsingPrimary) kid.SwitchTo(true);
+            kid.Zoomed = kid.Current.Def.ZoomFov > 0f;
 
             Vector3 eye = kid.Eye.position;
             Vector3 aimPoint = target.transform.position + Vector3.up * (target.Crouching ? 0.8f : 1.15f);
@@ -276,7 +302,7 @@ namespace WaterWars
                 nextLookAround = Time.time + Random.Range(1.5f, 3.5f);
                 // Mostly watch the direction enemies come from.
                 var rm = RoundManager.Instance;
-                float baseYaw = kid.Team == rm.Defenders ? 180f : 0f;
+                float baseYaw = kid.Team == rm.Defenders ? rm.Map.DefenderFacing : rm.Map.AttackerFacing;
                 lookYawTarget = baseYaw + Random.Range(-70f, 70f);
             }
             yaw = Mathf.MoveTowardsAngle(yaw, lookYawTarget, 120f * Time.deltaTime);

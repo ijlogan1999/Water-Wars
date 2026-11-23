@@ -57,6 +57,7 @@ namespace WaterWars
         public static bool Pressed(WWKey k) { return Keyboard.current != null && Keyboard.current[ToKey(k)].wasPressedThisFrame; }
         public static bool FireHeld() { return Mouse.current != null && Mouse.current.leftButton.isPressed; }
         public static bool FirePressed() { return Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame; }
+        public static bool AimHeld() { return Mouse.current != null && Mouse.current.rightButton.isPressed; }
         // The new system reports mouse movement in pixels; scale it to feel like the old system.
         public static Vector2 MouseDelta() { return Mouse.current != null ? Mouse.current.delta.ReadValue() * 0.05f : Vector2.zero; }
 #else
@@ -92,6 +93,7 @@ namespace WaterWars
         public static bool Pressed(WWKey k) { return Input.GetKeyDown(ToKey(k)); }
         public static bool FireHeld() { return Input.GetMouseButton(0); }
         public static bool FirePressed() { return Input.GetMouseButtonDown(0); }
+        public static bool AimHeld() { return Input.GetMouseButton(1); }
         public static Vector2 MouseDelta() { return new Vector2(Input.GetAxisRaw("Mouse X"), Input.GetAxisRaw("Mouse Y")); }
 #endif
     }

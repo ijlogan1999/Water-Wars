@@ -22,7 +22,7 @@ using UnityEngine;
 namespace WaterWars
 {
     public enum Phase { HeroSelect, Buy, Play, RoundOver, MatchOver }
-    public enum ShopItem { PumpSoaker, HandTowel, BeachTowel, Ability }
+    public enum ShopItem { HandTowel, BeachTowel, Ability }
 
     public class RoundManager : MonoBehaviour
     {
@@ -119,6 +119,7 @@ namespace WaterWars
         // =====================================================================
         void StartRound()
         {
+            if (Tuning.NewHousesEachRound && Round > 1) Map = GameBootstrap.RegenerateMap();
             SuddenDeath = Round > Tuning.SwapSidesAfterRound * 2;
             Attackers = Round <= Tuning.SwapSidesAfterRound || SuddenDeath ? Team.Orange : Team.Teal;
             PlaceEveryone(true);
@@ -170,7 +171,7 @@ namespace WaterWars
             {
                 bool attacking = k.Team == Attackers;
                 Vector3 spawn = attacking ? Map.AttackerSpawns[a++ % Map.AttackerSpawns.Count] : Map.DefenderSpawns[d++ % Map.DefenderSpawns.Count];
-                float yaw = attacking ? 0f : 180f; // attackers face north, defenders face south
+                float yaw = attacking ? Map.AttackerFacing : Map.DefenderFacing; // face the other crew
                 bool survived = newRound && survivedLastRound.ContainsKey(k) && survivedLastRound[k];
                 k.ResetForRound(spawn, yaw, survived);
             }
@@ -402,7 +403,6 @@ namespace WaterWars
         {
             switch (item)
             {
-                case ShopItem.PumpSoaker: return ToyDef.PumpSoaker.Name;
                 case ShopItem.HandTowel: return "Hand Towel (absorbs " + Tuning.HandTowelAbsorb + ")";
                 case ShopItem.BeachTowel: return "Beach Towel (absorbs " + Tuning.BeachTowelAbsorb + ")";
                 default: return kid.Hero != null ? kid.Hero.AbilityName + " charge" : "Ability charge";
@@ -413,7 +413,6 @@ namespace WaterWars
         {
             switch (item)
             {
-                case ShopItem.PumpSoaker: return ToyDef.PumpSoaker.Cost;
                 case ShopItem.HandTowel: return Tuning.HandTowelCost;
                 case ShopItem.BeachTowel: return Tuning.BeachTowelCost;
                 default: return kid.Hero != null ? kid.Hero.AbilityCost : 999;
@@ -428,9 +427,6 @@ namespace WaterWars
             if (kid.Money < Cost(item, kid)) { why = "Not enough allowance"; return false; }
             switch (item)
             {
-                case ShopItem.PumpSoaker:
-                    if (kid.Primary != null) { why = "Already have it"; return false; }
-                    break;
                 case ShopItem.HandTowel:
                     if (kid.Towel >= Tuning.HandTowelAbsorb) { why = "Towel already on"; return false; }
                     break;
@@ -451,13 +447,39 @@ namespace WaterWars
             kid.Money -= Cost(item, kid);
             switch (item)
             {
-                case ShopItem.PumpSoaker:
-                    kid.Primary = new ToyState(ToyDef.PumpSoaker);
-                    kid.SwitchTo(true);
-                    break;
                 case ShopItem.HandTowel: kid.Towel = Tuning.HandTowelAbsorb; break;
                 case ShopItem.BeachTowel: kid.Towel = Tuning.BeachTowelAbsorb; break;
                 case ShopItem.Ability: kid.AbilityCharges++; break;
+            }
+            return true;
+        }
+
+        /// Toys: buying one replaces whatever is in that slot (sidearm or primary).
+        public bool CanBuyToy(Kid kid, ToyDef toy, out string why)
+        {
+            why = null;
+            if (Phase != Phase.Buy) { why = "Only during the allowance phase"; return false; }
+            var owned = toy.Slot == ToySlot.Primary ? kid.Primary : kid.Sidearm;
+            if (owned != null && owned.Def == toy) { why = "Owned"; return false; }
+            if (kid.Money < toy.Cost) { why = "Need $" + toy.Cost; return false; }
+            return true;
+        }
+
+        public bool BuyToy(Kid kid, ToyDef toy)
+        {
+            string why;
+            if (!CanBuyToy(kid, toy, out why)) return false;
+            kid.Money -= toy.Cost;
+            if (toy.Slot == ToySlot.Primary)
+            {
+                kid.Primary = new ToyState(toy);
+                kid.UsingPrimary = false;
+                kid.SwitchTo(true);
+            }
+            else
+            {
+                kid.Sidearm = new ToyState(toy);
+                if (kid.Primary == null) kid.SwitchTo(false);
             }
             return true;
         }

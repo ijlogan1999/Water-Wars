@@ -56,12 +56,9 @@ namespace WaterWars
                 Cam.backgroundColor = new Color(0.55f, 0.75f, 0.95f);
             }
 
-            // The water toy you see in your hands.
-            viewToy = Shapes.Box("View Toy", Vector3.zero, new Vector3(0.1f, 0.12f, 0.4f), ToyDef.SquirtPistol.ViewColor, camGo.transform, false).transform;
-            viewToy.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            var tank = Shapes.Box("Tank", Vector3.zero, new Vector3(0.14f, 0.14f, 0.18f), new Color(0.6f, 0.85f, 1f), viewToy, false);
-            tank.transform.localPosition = new Vector3(0f, 0.9f, -0.1f);
-            tank.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            // The water toy you see in your hands (rebuilt whenever you switch toys).
+            viewToy = new GameObject("View Toy").transform;
+            viewToy.SetParent(camGo.transform, false);
 
             kid.OnFired += () => kick = 1f;
             yaw = transform.eulerAngles.y;
@@ -92,7 +89,12 @@ namespace WaterWars
             if (wantCursor) { kid.WantsInteract = false; kid.Move(Vector3.zero, 0f, false); return; }
 
             // ---- Looking ----------------------------------------------------
-            Vector2 look = WWInput.MouseDelta() * MouseSensitivity;
+            // Right-click scopes in with sniper toys. Aim slows down while zoomed.
+            var def = kid.Current.Def;
+            kid.Zoomed = def.ZoomFov > 0f && WWInput.AimHeld() && !kid.Reloading;
+            float wantFov = kid.Zoomed ? def.ZoomFov : 85f;
+            Cam.fieldOfView = Mathf.MoveTowards(Cam.fieldOfView, wantFov, Time.deltaTime * 400f);
+            Vector2 look = WWInput.MouseDelta() * MouseSensitivity * (Cam.fieldOfView / 85f);
             yaw += look.x;
             pitch = Mathf.Clamp(pitch - look.y, -88f, 88f);
             kid.SetLook(yaw, pitch);
@@ -136,15 +138,49 @@ namespace WaterWars
         void UpdateViewToy()
         {
             if (viewToy == null) return;
-            viewToy.gameObject.SetActive(kid.Alive);
-            bool big = kid.UsingPrimary && kid.Primary != null;
-            viewToy.GetComponent<Renderer>().sharedMaterial = Shapes.Mat(kid.Current.Def.ViewColor);
-            viewToy.localScale = big ? new Vector3(0.12f, 0.14f, 0.6f) : new Vector3(0.08f, 0.1f, 0.3f);
+            var def = kid.Current.Def;
+            if (def != shownToy) { BuildViewModel(def); shownToy = def; }
+            viewToy.gameObject.SetActive(kid.Alive && !kid.Zoomed);
             kick = Mathf.MoveTowards(kick, 0f, Time.deltaTime * 8f);
             float reloadDip = kid.Reloading ? Mathf.Sin(kid.ReloadProgress * Mathf.PI) * 0.12f : 0f;
             float bob = Mathf.Sin(Time.time * 9f) * 0.008f * Mathf.Clamp01(kid.HorizontalSpeed / Tuning.RunSpeed);
-            viewToy.localPosition = new Vector3(0.22f, -0.2f - reloadDip + bob, 0.45f - kick * 0.06f);
+            viewToy.localPosition = new Vector3(0.2f, -0.2f - reloadDip + bob, 0.4f - kick * 0.06f);
             viewToy.localRotation = Quaternion.Euler(-kick * 6f + reloadDip * 200f, 0f, 0f);
+        }
+
+        ToyDef shownToy;
+
+        /// A grey-box stand-in for the toy: a grip, a body, a barrel, and maybe a tank.
+        /// Ian's Blender models will replace these.
+        void BuildViewModel(ToyDef def)
+        {
+            for (int i = viewToy.childCount - 1; i >= 0; i--) Destroy(viewToy.GetChild(i).gameObject);
+            MakeOneToy(def, Vector3.zero);
+            if (def.ViewTwin) MakeOneToy(def, new Vector3(-0.4f, 0f, 0f)); // the second one, in your left hand
+        }
+
+        void MakeOneToy(ToyDef def, Vector3 offset)
+        {
+            var holder = new GameObject(def.Name).transform;
+            holder.SetParent(viewToy, false);
+            holder.localPosition = offset;
+            float len = def.ViewLength;
+            Part(holder, "Grip", new Vector3(0f, -0.07f, -0.02f), new Vector3(0.05f, 0.12f, 0.06f), def.ViewColor * 0.7f);
+            Part(holder, "Body", new Vector3(0f, 0f, len * 0.25f), new Vector3(0.08f, 0.08f, len * 0.6f), def.ViewColor);
+            Part(holder, "Barrel", new Vector3(0f, 0.01f, len * 0.65f), new Vector3(0.035f, 0.035f, len * 0.4f), def.ViewColor * 0.8f);
+            if (def.ViewTank)
+                Part(holder, "Tank", new Vector3(0f, 0.08f, len * 0.2f), new Vector3(0.1f, 0.09f, len * 0.4f), new Color(0.6f, 0.85f, 1f));
+            if (def.ZoomFov > 0f)
+                Part(holder, "Scope", new Vector3(0f, 0.07f, len * 0.3f), new Vector3(0.04f, 0.04f, 0.16f), new Color(0.15f, 0.15f, 0.15f));
+        }
+
+        static void Part(Transform parent, string name, Vector3 pos, Vector3 size, Color c)
+        {
+            c.a = 1f;
+            var p = Shapes.Box(name, Vector3.zero, size, c, parent, false);
+            p.transform.localPosition = pos;
+            p.transform.localRotation = Quaternion.identity;
+            p.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
 
         // ---- Watching a teammate while you sit on the curb ---------------------
@@ -152,6 +188,7 @@ namespace WaterWars
         {
             var rm = RoundManager.Instance;
             spectating = true;
+            Cam.fieldOfView = 85f;
             var mates = rm.Kids.FindAll(k => k.Team == kid.Team && k.Alive && k != kid);
             if (WWInput.FirePressed()) spectateIndex++;
             if (mates.Count == 0)

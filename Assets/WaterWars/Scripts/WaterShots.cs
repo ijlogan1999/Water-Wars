@@ -81,19 +81,19 @@ namespace WaterWars
         }
 
         // ---- Instant toys --------------------------------------------------
-        public static void Instant(Kid shooter, Vector3 origin, Vector3 dir, ToyDef toy)
+        public static void Instant(Kid shooter, Vector3 origin, Vector3 dir, ToyDef toy, bool drawStreak = true)
         {
             var c = Trace(origin, dir, toy.Range, shooter);
             Vector3 end = c.Hit ? c.Point : origin + dir * toy.Range;
             if (c.Zone != null) Soak(shooter, c.Zone, toy.SoakPerHit, Vector3.Distance(origin, end), toy.Range, toy.FalloffStart);
-            if (c.Hit) Splash(end, WaterColor, 5, 2f);
+            if (c.Hit) Splash(end, WaterColor, toy.Pellets > 1 ? 2 : 5, 2f);
 
             // Draw a short-lived streak. For you, start it a bit to the right and below
             // the eye, where your toy is, so it doesn't cover the crosshair.
             Vector3 start = origin + dir * 0.5f;
             if (shooter != null && shooter.IsPlayer)
                 start += shooter.Eye.right * 0.18f - shooter.Eye.up * 0.15f;
-            Streak.Make(start, end);
+            if (drawStreak || Random.value < 0.4f) Streak.Make(start, end);
         }
 
         // ---- Arcing water and balloons -------------------------------------

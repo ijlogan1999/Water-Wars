@@ -114,6 +114,7 @@ namespace WaterWars
             DrawFeed(rm);
             if (player.Alive)
             {
+                if (player.Zoomed) DrawScope();
                 DrawCrosshair();
                 DrawSoak(player);
                 DrawToys(player);
@@ -254,15 +255,29 @@ namespace WaterWars
             if (Time.time < hitMarkerUntil)
             {
                 Color c = hitMarkerHead || hitMarkerSoaked ? new Color(1f, 0.85f, 0.2f) : new Color(0.55f, 0.85f, 1f);
-                float size = (hitMarkerSoaked ? 22 : 14) * s, w = Mathf.Max(3f, 3 * s);
+                float size = (hitMarkerSoaked ? 30 : 20) * s, w = Mathf.Max(4f, 4 * s);
                 var old = GUI.matrix;
                 for (int i = 0; i < 4; i++)
                 {
                     GUIUtility.RotateAroundPivot(45f + 90f * i, new Vector2(cx, cy));
-                    Fill(new Rect(cx + 7 * s, cy - w / 2, size, w), c);
+                    Fill(new Rect(cx + 9 * s, cy - w / 2 + 1, size, w), new Color(0f, 0f, 0f, 0.6f));
+                    Fill(new Rect(cx + 9 * s, cy - w / 2, size, w), c);
                     GUI.matrix = old;
                 }
             }
+        }
+
+        // Looking through a scope: dark edges and long thin crosshair lines.
+        void DrawScope()
+        {
+            float r = Screen.height * 0.45f, cx = Screen.width * 0.5f, cy = Screen.height * 0.5f;
+            var dark = new Color(0f, 0f, 0f, 0.85f);
+            Fill(new Rect(0, 0, cx - r, Screen.height), dark);
+            Fill(new Rect(cx + r, 0, Screen.width - cx - r, Screen.height), dark);
+            Fill(new Rect(cx - r, 0, r * 2, cy - r), dark);
+            Fill(new Rect(cx - r, cy + r, r * 2, Screen.height - cy - r), dark);
+            Fill(new Rect(cx - r, cy - 1, r * 2, 2), new Color(0f, 0f, 0f, 0.8f));
+            Fill(new Rect(cx - 1, cy - r, 2, r * 2), new Color(0f, 0f, 0f, 0.8f));
         }
 
         void DrawPopups(Camera cam)
@@ -348,6 +363,8 @@ namespace WaterWars
                     hint = "The Big One was dropped! Walk over it to pick it up.";
             }
             if (hint != null) Label(new Rect(0, Screen.height * 0.62f, Screen.width, 40 * s), hint, center);
+            // Which 3 houses this map uses (shown while shopping, and on the scoreboard).
+            if (rm.Phase == Phase.Buy) Label(new Rect(20 * s, 100 * s, 520 * s, 120 * s), rm.Map.Describe(), small);
         }
 
         void DrawProgress(RoundManager rm, Kid k)
@@ -423,26 +440,70 @@ namespace WaterWars
         }
 
         // ---- Buy menu ("Lemonade Stand") -----------------------------------------------
+        // One column per toy type, plus towels and your ability along the bottom.
         void DrawBuyMenu(RoundManager rm, Kid k)
         {
-            float w = 560 * s, h = 470 * s;
+            var cats = ToyDef.Categories;
+            float colW = 250 * s, gap = 12 * s, btnH = 78 * s;
+            float w = cats.Length * colW + (cats.Length + 1) * gap;
+            if (w > Screen.width - 20) { float f = (Screen.width - 20) / w; colW *= f; gap *= f; w = Screen.width - 20; }
+            float h = 640 * s;
             var r = new Rect((Screen.width - w) * 0.5f, (Screen.height - h) * 0.5f, w, h);
-            Fill(r, new Color(0.15f, 0.1f, 0.02f, 0.85f));
-            Label(new Rect(r.x, r.y + 10 * s, w, 40 * s), "LEMONADE STAND", mid);
-            Label(new Rect(r.x, r.y + 50 * s, w, 30 * s), "Allowance: $" + k.Money + "      (B to close)", center);
+            Fill(r, new Color(0.15f, 0.1f, 0.02f, 0.9f));
+            Label(new Rect(r.x, r.y + 8 * s, w, 40 * s), "LEMONADE STAND", mid);
+            Label(new Rect(r.x, r.y + 46 * s, w, 30 * s), "Allowance: $" + k.Money + "      (B to close)", center);
 
-            float y = r.y + 95 * s;
+            var btn = new GUIStyle(button) { fontSize = (int)(17 * s) };
+            hoveredToy = null;
+            for (int c = 0; c < cats.Length; c++)
+            {
+                float x = r.x + gap + c * (colW + gap);
+                float y = r.y + 85 * s;
+                Label(new Rect(x, y, colW, 28 * s), cats[c].ToUpper() + (cats[c] == "Sidearm" ? " (slot 2)" : ""), center);
+                y += 32 * s;
+                foreach (var toy in ToyDef.InCategory(cats[c]))
+                {
+                    string why;
+                    bool ok = rm.CanBuyToy(k, toy, out why);
+                    string text = toy.Name + "\n" + (toy.Cost == 0 ? "Free" : "$" + toy.Cost) + (ok ? "" : "  (" + why + ")");
+                    var br = new Rect(x, y, colW, btnH);
+                    GUI.enabled = ok;
+                    if (GUI.Button(br, text, btn)) rm.BuyToy(k, toy);
+                    GUI.enabled = true;
+                    if (br.Contains(Event.current.mousePosition)) hoveredToy = toy;
+                    y += btnH + 8 * s;
+                }
+            }
+
+            // Bottom row: towels and ability.
+            float by = r.yMax - 175 * s, bw = (w - gap * 4) / 3f;
+            int i = 0;
             foreach (ShopItem item in System.Enum.GetValues(typeof(ShopItem)))
             {
                 string why;
                 bool ok = rm.CanBuy(k, item, out why);
-                string text = RoundManager.ItemName(item, k) + "   $" + RoundManager.Cost(item, k) + (ok ? "" : "   (" + why + ")");
+                string text = RoundManager.ItemName(item, k) + "\n$" + RoundManager.Cost(item, k) + (ok ? "" : "  (" + why + ")");
                 GUI.enabled = ok;
-                if (GUI.Button(new Rect(r.x + 30 * s, y, w - 60 * s, 70 * s), text, button)) rm.Buy(k, item);
+                if (GUI.Button(new Rect(r.x + gap + i * (bw + gap), by, bw, 70 * s), text, btn)) rm.Buy(k, item);
                 GUI.enabled = true;
-                y += 85 * s;
+                i++;
+            }
+
+            // Stats for the toy under the mouse.
+            if (hoveredToy != null)
+            {
+                var t = hoveredToy;
+                string kind = t.Arcing ? "arcing water" : "instant hit";
+                if (t.Pellets > 1) kind += ", " + t.Pellets + " drops per shot";
+                if (t.Burst > 1) kind += ", " + t.Burst + "-shot burst";
+                if (t.ZoomFov > 0f) kind += ", right-click scope";
+                string info = t.Name + ": " + t.SoakPerHit + " soak per hit (" + kind + "), " + t.TankShots + " shots, " +
+                              (t.HoldToFire ? "hold to fire" : "click per shot") + ". Based on: " + t.Reference;
+                Label(new Rect(r.x + 20 * s, r.yMax - 95 * s, w - 40 * s, 80 * s), info, small);
             }
         }
+
+        ToyDef hoveredToy;
 
         // ---- Esc menu ---------------------------------------------------------------
         void DrawPauseMenu(PlayerController pc)
