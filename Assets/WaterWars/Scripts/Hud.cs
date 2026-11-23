@@ -18,12 +18,61 @@ namespace WaterWars
     {
         static float hitMarkerUntil;
         static bool hitMarkerHead;
+        static bool hitMarkerSoaked;
 
-        /// Water calls this when YOU hit someone, so the crosshair flashes.
-        public static void ShowHitMarker(bool head)
+        // Floating numbers that pop up where your water landed.
+        struct Popup { public Vector3 Where; public string Text; public float Born; public Color Color; }
+        static readonly System.Collections.Generic.List<Popup> popups = new System.Collections.Generic.List<Popup>();
+
+        static AudioSource sfx;
+        static AudioClip hitClip, soakedClip;
+
+        /// Water calls this when YOU hit someone: an X on the crosshair, a "plip"
+        /// sound, and a number showing how much soak you added.
+        public static void ShowHitMarker(bool head, float amount, Vector3 where, bool soakedThem)
         {
-            hitMarkerUntil = Time.time + 0.15f;
+            hitMarkerUntil = Time.time + (soakedThem ? 0.5f : 0.25f);
             hitMarkerHead = head;
+            hitMarkerSoaked = soakedThem;
+            popups.Add(new Popup
+            {
+                Where = where + Vector3.up * 0.4f,
+                Text = soakedThem ? "SOAKED!" : Mathf.RoundToInt(amount).ToString(),
+                Born = Time.time,
+                Color = soakedThem ? new Color(1f, 0.85f, 0.2f) : head ? new Color(1f, 0.85f, 0.2f) : Color.white,
+            });
+            if (popups.Count > 20) popups.RemoveAt(0);
+            if (sfx != null)
+            {
+                sfx.pitch = head ? 1.35f : 1f;
+                sfx.PlayOneShot(soakedThem ? soakedClip : hitClip, soakedThem ? 0.9f : 0.6f);
+            }
+        }
+
+        void Awake()
+        {
+            // Make the hit sounds in code (no audio files needed): a quick falling "plip",
+            // and a longer two-note "bloop" when you soak someone out.
+            sfx = gameObject.AddComponent<AudioSource>();
+            sfx.spatialBlend = 0f;
+            hitClip = MakeTone("Hit", 0.09f, 1400f, 700f);
+            soakedClip = MakeTone("Soaked", 0.3f, 600f, 1200f);
+        }
+
+        static AudioClip MakeTone(string name, float seconds, float fromHz, float toHz)
+        {
+            int rate = 44100, n = (int)(rate * seconds);
+            var data = new float[n];
+            float phase = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = (float)i / n;
+                phase += 2f * Mathf.PI * Mathf.Lerp(fromHz, toHz, t) / rate;
+                data[i] = Mathf.Sin(phase) * (1f - t) * 0.5f;
+            }
+            var clip = AudioClip.Create(name, n, 1, rate, false);
+            clip.SetData(data, 0);
+            return clip;
         }
 
         GUIStyle big, mid, small, smallRight, center, button, box;
@@ -59,6 +108,7 @@ namespace WaterWars
             if (rm.Phase == Phase.HeroSelect) { DrawHeroSelect(rm); return; }
 
             DrawWorldMarkers(rm, pc);
+            DrawPopups(pc != null ? pc.Cam : null);
             DrawWetOverlay(player);
             DrawTopBar(rm);
             DrawFeed(rm);
@@ -194,13 +244,42 @@ namespace WaterWars
         void DrawCrosshair()
         {
             float cx = Screen.width * 0.5f, cy = Screen.height * 0.5f;
-            bool hit = Time.time < hitMarkerUntil;
-            Color c = hit ? (hitMarkerHead ? new Color(1f, 0.85f, 0.2f) : Water) : Color.white;
-            float len = (hit ? 12 : 8) * s, thick = Mathf.Max(2f, 2 * s), gap = 4 * s;
-            Fill(new Rect(cx - thick / 2, cy - gap - len, thick, len), c);
-            Fill(new Rect(cx - thick / 2, cy + gap, thick, len), c);
-            Fill(new Rect(cx - gap - len, cy - thick / 2, len, thick), c);
-            Fill(new Rect(cx + gap, cy - thick / 2, len, thick), c);
+            float len = 8 * s, thick = Mathf.Max(2f, 2 * s), gap = 4 * s;
+            Fill(new Rect(cx - thick / 2, cy - gap - len, thick, len), Color.white);
+            Fill(new Rect(cx - thick / 2, cy + gap, thick, len), Color.white);
+            Fill(new Rect(cx - gap - len, cy - thick / 2, len, thick), Color.white);
+            Fill(new Rect(cx + gap, cy - thick / 2, len, thick), Color.white);
+
+            // Hit marker: a big X around the crosshair. Yellow for face hits and soak-outs.
+            if (Time.time < hitMarkerUntil)
+            {
+                Color c = hitMarkerHead || hitMarkerSoaked ? new Color(1f, 0.85f, 0.2f) : new Color(0.55f, 0.85f, 1f);
+                float size = (hitMarkerSoaked ? 22 : 14) * s, w = Mathf.Max(3f, 3 * s);
+                var old = GUI.matrix;
+                for (int i = 0; i < 4; i++)
+                {
+                    GUIUtility.RotateAroundPivot(45f + 90f * i, new Vector2(cx, cy));
+                    Fill(new Rect(cx + 7 * s, cy - w / 2, size, w), c);
+                    GUI.matrix = old;
+                }
+            }
+        }
+
+        void DrawPopups(Camera cam)
+        {
+            if (cam == null) return;
+            var st = new GUIStyle(mid);
+            for (int i = popups.Count - 1; i >= 0; i--)
+            {
+                float age = Time.time - popups[i].Born;
+                if (age > 0.9f) { popups.RemoveAt(i); continue; }
+                Vector3 sp = cam.WorldToScreenPoint(popups[i].Where + Vector3.up * age * 0.8f);
+                if (sp.z <= 0f) continue;
+                var c = popups[i].Color;
+                c.a = 1f - age / 0.9f;
+                st.normal.textColor = c;
+                GUI.Label(new Rect(sp.x - 100 * s, Screen.height - sp.y - 20 * s, 200 * s, 40 * s), popups[i].Text, st);
+            }
         }
 
         // ---- Soak meter (a glass that fills with water) --------------------------
@@ -310,8 +389,13 @@ namespace WaterWars
         {
             var cam = pc != null ? pc.Cam : null;
             if (cam == null) return;
+            // Site letters: small and see-through, high in the sky, and they hide when
+            // they'd cover your crosshair or when you're standing on that site.
             foreach (var site in rm.Map.Sites)
-                Marker(cam, site.Center + Vector3.up * 6f, site.Name, new Color(0.6f, 0.85f, 1f), mid);
+            {
+                if (site.Contains(rm.Player.transform.position)) continue;
+                Marker(cam, site.Center + Vector3.up * 14f, site.Name, new Color(0.6f, 0.85f, 1f, 0.6f), small, true);
+            }
 
             var big = rm.Big;
             bool showBig = big.State == BigOneState.Planted || rm.Player.Team == rm.Attackers;
@@ -320,13 +404,19 @@ namespace WaterWars
 
             foreach (var k in rm.Kids)
                 if (k != rm.Player && k.Team == rm.Player.Team && k.Alive)
-                    Marker(cam, k.transform.position + Vector3.up * 2.2f, k.DisplayName, TeamInfo.Color(k.Team), small);
+                    Marker(cam, k.transform.position + Vector3.up * 2.2f, k.DisplayName, TeamInfo.Color(k.Team), small, true);
         }
 
-        void Marker(Camera cam, Vector3 world, string text, Color color, GUIStyle st)
+        void Marker(Camera cam, Vector3 world, string text, Color color, GUIStyle st, bool hideNearCrosshair = false)
         {
             Vector3 sp = cam.WorldToScreenPoint(world);
             if (sp.z <= 0f) return; // behind the camera
+            if (hideNearCrosshair)
+            {
+                float d = Vector2.Distance(new Vector2(sp.x, sp.y), new Vector2(Screen.width * 0.5f, Screen.height * 0.5f));
+                if (d < 160f * s) color.a *= Mathf.Clamp01((d - 60f * s) / (100f * s));
+                if (color.a <= 0.02f) return;
+            }
             var style = new GUIStyle(st) { alignment = TextAnchor.MiddleCenter };
             style.normal.textColor = color;
             Shadowed(new Rect(sp.x - 150 * s, Screen.height - sp.y - 20 * s, 300 * s, 40 * s), text, style);

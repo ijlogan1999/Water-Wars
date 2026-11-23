@@ -122,7 +122,7 @@ namespace WaterWars
                 float dist = to.magnitude;
                 if (dist > bestDist) continue;
                 // Bots see in front of them, unless something just hit them.
-                if (!justHit && Vector3.Angle(transform.forward, to) > 75f) continue;
+                if (!justHit && Vector3.Angle(transform.forward, to) > Tuning.BotSightAngle) continue;
                 if (!CanSee(other)) continue;
                 best = other;
                 bestDist = dist;
@@ -168,7 +168,7 @@ namespace WaterWars
 
             // Aim error: shrinks the longer the bot has been tracking you.
             float tracking = Mathf.Clamp01((Time.time - targetSeenAt) / 2f);
-            float errDeg = Tuning.BotAimErrorDegrees * Mathf.Lerp(1.6f, 0.6f, tracking);
+            float errDeg = Tuning.BotAimErrorDegrees * Mathf.Lerp(1.4f, 0.4f, tracking);
             aimPoint += aimNoise * Mathf.Tan(errDeg * Mathf.Deg2Rad) * dist;
             if (Random.value < 0.05f) aimNoise = Random.insideUnitSphere;
 

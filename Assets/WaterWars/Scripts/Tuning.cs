@@ -65,9 +65,10 @@ namespace WaterWars
 
         // ---- Bots ----------------------------------------------------------
         public const float BotSightRange = 45f;
-        public const float BotReactionMin = 0.35f;  // Seconds before a bot shoots after seeing you.
-        public const float BotReactionMax = 0.7f;
-        public const float BotAimErrorDegrees = 3.5f; // Bigger = worse aim.
+        public const float BotReactionMin = 0.2f;   // Seconds before a bot shoots after seeing you.
+        public const float BotReactionMax = 0.4f;
+        public const float BotAimErrorDegrees = 2f;   // Bigger = worse aim.
         public const float BotSpeed = 5f;
+        public const float BotSightAngle = 90f;     // How far to each side bots notice you (degrees).
     }
 }

@@ -73,7 +73,10 @@ namespace WaterWars
             float amount = baseSoak * zone.Multiplier;
             if (traveled > falloffStart) amount *= 0.6f; // far shots lose punch
             victim.TakeSoak(amount, shooter, shooter != null ? shooter.transform.position : zone.transform.position);
-            if (shooter != null && shooter.IsPlayer) Hud.ShowHitMarker(zone.Zone == HitZoneType.Head);
+            if (shooter != null && shooter.IsPlayer)
+                Hud.ShowHitMarker(zone.Zone == HitZoneType.Head, amount, zone.transform.position, victim.IsOut);
+            // A big splash on whoever got hit, so everyone can see the hit land.
+            Splash(zone.transform.position, WaterColor, 10, 2.5f);
             return true;
         }
 
@@ -123,8 +126,9 @@ namespace WaterWars
                 // Walls protect you from a burst on the other side.
                 if (Physics.Linecast(center + Vector3.up * 0.2f, chest, Shapes.ShotMask, QueryTriggerInteraction.Ignore)) continue;
                 hitKids.Add(k);
-                k.TakeSoak(Mathf.Lerp(soakCenter, soakEdge, d / radius), shooter, center);
-                if (shooter != null && shooter.IsPlayer) Hud.ShowHitMarker(false);
+                float amount = Mathf.Lerp(soakCenter, soakEdge, d / radius);
+                k.TakeSoak(amount, shooter, center);
+                if (shooter != null && shooter.IsPlayer) Hud.ShowHitMarker(false, amount, chest, k.IsOut);
             }
         }
 
