@@ -268,10 +268,11 @@ namespace WaterWars
             foreach (int id in def.LotIds)
             {
                 var lot = NeighborhoodData.Lots[id];
+                // Side yards are at least 3 m wide: put a stone down the middle of each.
                 for (float k = 6f; k <= 20f; k += 2.5f)
                 {
-                    spots.Add(lot.Front + lot.In * k + lot.Along * (lot.Frontage * 0.5f - 0.7f));
-                    spots.Add(lot.Front + lot.In * k - lot.Along * (lot.Frontage * 0.5f - 0.7f));
+                    spots.Add(lot.Front + lot.In * k + lot.Along * (lot.Frontage * 0.5f - 1.5f));
+                    spots.Add(lot.Front + lot.In * k - lot.Along * (lot.Frontage * 0.5f - 1.5f));
                 }
                 if (lot.HasGarage)
                     for (float k = -3f; k <= 4.5f; k += 2.5f) spots.Add(lot.Garage + lot.In * k);
@@ -400,8 +401,9 @@ namespace WaterWars
                 nav.Frame = frame;
                 if (site != null) Shapes.BoxOnGround("Crates", W(lot.TreeSpot - lot.In * 4f + lot.Along * 4f), new Vector3(1.4f, 1.4f, 1.4f), Plank, t);
             }
-            else
+            else if (site == null || site.Kind != SiteKind.Yard)
             {
+                // (A backyard plant site keeps its middle clear: no pool or shed in the way.)
                 YardThing(t, lot.Thing, lot.ThingAt, lot.In);
             }
             if (site != null && site.Kind != SiteKind.Spot)

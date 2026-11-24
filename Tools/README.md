@@ -14,3 +14,13 @@ Run them from this folder, in this order:
 4. `python3 export_cs.py` writes `NeighborhoodData.cs` for the game.
 
 Then go back to Unity and press Play.
+
+## Checking that every map is walkable
+
+`python3 walkcheck/check_walkable.py` rebuilds each map's solid things (houses,
+garages, fences, gates, map edges, trees, yard stuff) as shapes seen from above,
+leaves a kid-sized gap around them, and checks that a kid can walk from the
+attacker spawn to both sites and the defender spawn. It prints the result and
+draws `walkcheck/walk_mapN.png` (green = reachable). Run it after changing the
+neighborhood or a map. `export_cs.py` keeps every side yard at least
+`SIDE_YARD` (3 m) wide so the lanes stay walkable.

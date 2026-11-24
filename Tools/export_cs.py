@@ -22,6 +22,62 @@ def thingtype(k):
     for lim,nm in sorted(THING.items()):
         if k<lim: return nm
     return "None"
+# ---------- make room to walk around houses ----------
+# Kids have to get from the street into the backyards through the side yards,
+# so every house + garage leaves at least SIDE_YARD meters of clear grass on
+# both sides (Ian's playtest: the maps were barely walkable).
+SIDE_YARD=3.0
+GARAGE_SITES={("Willow Ct",104),("Birch Ln",154),("Birch Ln",166)}
+def rect(center,t,n,w,d):
+    c=np.array(center)
+    return Polygon([tuple(c+t*a*w/2+n*b*d/2) for a,b in((-1,-1),(1,-1),(1,1),(-1,1))])
+def lot_span(r,lo_n,hi_n):
+    """The narrowest stretch of the lot (along the street) between two depths."""
+    t,n,m=r["t"],r["n"],r["m"]; best=(-1e9,1e9)
+    for k in np.linspace(lo_n,hi_n,7):
+        ln=LineString([tuple(m+n*k-t*80),tuple(m+n*k+t*80)]).intersection(r["lot"])
+        if ln.is_empty: continue
+        ts=[np.dot(np.array(p)-m,t) for g_ in getattr(ln,"geoms",[ln]) for p in g_.coords]
+        best=(max(best[0],min(ts)),min(best[1],max(ts)))
+    return best
+changed=0
+for r in REC:
+    t,n,m=r["t"],r["n"],r["m"]
+    hc=np.array(r["house"].centroid.coords[0]); hw,hd=extents(r["house"],hc,t,n)
+    hn=np.dot(hc-m,n); ht=np.dot(hc-m,t)
+    gar=r["gar"]
+    lo_n=hn-hd/2; hi_n=hn+hd/2
+    if gar is not None:
+        gc=np.array(gar.centroid.coords[0]); gw,gd=extents(gar,gc,t,n); gt=np.dot(gc-m,t); gn=np.dot(gc-m,n)
+        lo_n=min(lo_n,gn-gd/2); hi_n=max(hi_n,gn+gd/2)
+    lmin,lmax=lot_span(r,lo_n,hi_n)
+    room=(lmax-lmin)-2*SIDE_YARD
+    parts=[("h",hw)]+([("g",gw)] if gar is not None else [])
+    total=hw+(gw if gar is not None else 0)
+    if total<=room+1e-6 and min(ht-hw/2,(gt-gw/2) if gar is not None else 1e9)>=lmin+SIDE_YARD-1e-6 and max(ht+hw/2,(gt+gw/2) if gar is not None else -1e9)<=lmax-SIDE_YARD+1e-6:
+        continue
+    keep_garage = gar is not None and ((r["street"],r["num"]) in GARAGE_SITES or room-gw>=8)
+    if not keep_garage: gar=None
+    new_hw=min(hw, room-(gw if gar is not None else 0))
+    new_hw=max(new_hw,6.0)
+    # Lay the block out (house, then garage on the side it was on), centered in the lot.
+    mid=(lmin+lmax)/2
+    if gar is not None:
+        side=1 if gt>ht else -1
+        width=new_hw+gw; start=mid-width/2
+        if side>0: ht2=start+new_hw/2; gt2=start+new_hw+gw/2
+        else: gt2=start+gw/2; ht2=start+gw+new_hw/2
+        r["gar"]=rect(m+t*gt2+n*gn,t,n,gw,gd)
+        r["drive"]=rect(m+t*gt2+n*(np.dot(np.array(r["drive"].centroid.coords[0])-m,n)),t,n,4.8,extents(r["drive"],np.array(r["drive"].centroid.coords[0]),t,n)[1])
+    else:
+        ht2=mid; r["gar"]=None
+        dc=np.array(r["drive"].centroid.coords[0]); dn=np.dot(dc-m,n); dl=extents(r["drive"],dc,t,n)[1]
+        dside=1 if np.dot(dc-m,t)>ht else -1
+        r["drive"]=rect(m+t*(ht2+dside*(new_hw/2+2.6))+n*dn,t,n,4.8,dl)
+    r["house"]=rect(m+t*ht2+n*hn,t,n,new_hw,hd)
+    changed+=1
+print("houses moved/narrowed for side yards:",changed)
+
 lot_lines=[]; SPOTS=[]
 for r in REC:
     t,n,m=r["t"],r["n"],r["m"]
@@ -68,7 +124,14 @@ for a,b in segs:
     else:
         x=rng.random(); kind=1 if x<0.25 else 2 if x<0.4 else 0   # 0 wood, 1 picket, 2 hedge
     gate = L>=6 and (isback or rng.random()<0.5)
-    if gate:
+    # Side fences of corner lots (the ones facing a street, park or school) always
+    # get a gate in the middle, so you can get into those backyards from the side.
+    side_gate = not gate and L>=6 and len(owners)==1
+    if side_gate:
+        g0=L/2-1.25
+        pieces=[(a,a+d*g0),(a+d*(g0+2.5),b)]
+        gc=a+d*(g0+1.25); gates.append((gc,np.array([-d[1],d[0]])))
+    elif gate:
         g0=rng.uniform(1.2,L-1.2-2.5)
         pieces=[(a,a+d*g0),(a+d*(g0+2.5),b)]
         gc=a+d*(g0+1.25); gates.append((gc,np.array([-d[1],d[0]])))
@@ -111,7 +174,7 @@ for i,m in enumerate(MAPS):
     # boundary pieces
     pieces=[]
     ext=list(area.exterior.coords)
-    for a,b in zip(ext,ext[1:]):
+    for side,(a,b) in enumerate(zip(ext,ext[1:])):
         a=np.array(a);b=np.array(b);L=np.linalg.norm(b-a)
         if L<0.05: continue
         d=(b-a)/L; out=np.array([d[1],-d[0]])   # ccw ring: outside is to the right
@@ -124,14 +187,16 @@ for i,m in enumerate(MAPS):
             lab=c+("|F" if covered and c in("Lot","Curb") else "")
             if cur is None: cur=lab;start=u
             elif lab!=cur or s_==steps:
-                pieces.append((a+d*start,a+d*u,cur)); cur=lab;start=u
+                pieces.append((a+d*start,a+d*u,cur,side)); cur=lab;start=u
     # merge tiny pieces
     pcs=[]
-    for p,q,c in pieces:
+    # (only merge pieces on the same straight side: merging across a corner
+    #  would make an edge that cuts diagonally through the map)
+    for p,q,c,side in pieces:
         if np.linalg.norm(q-p)<0.01: continue
-        if pcs and (np.linalg.norm(q-p)<1.6 and c.startswith("Verge") or c==pcs[-1][2]) and np.linalg.norm(pcs[-1][1]-p)<0.01:
-            pcs[-1]=(pcs[-1][0],q,pcs[-1][2]); continue
-        pcs.append((p,q,c))
+        if pcs and pcs[-1][3]==side and (np.linalg.norm(q-p)<1.6 and c.startswith("Verge") or c==pcs[-1][2]) and np.linalg.norm(pcs[-1][1]-p)<0.01:
+            pcs[-1]=(pcs[-1][0],q,pcs[-1][2],side); continue
+        pcs.append((p,q,c,side))
     blk=blocks(m["area"])
     rbs=[]
     for j,(p,dd) in enumerate(blk): rbs.append((p,dd,KINDS[(k0+j)%len(KINDS)].title().replace(" ","")))
@@ -141,6 +206,9 @@ for i,m in enumerate(MAPS):
         li=key[lk] if lk else -1
         r=REC[li] if lk else None
         if kind=="Garage": gc=np.array(r["gar"].centroid.coords[0]); c=gc+r["n"]*3.5
+        if kind=="Yard":   # the open middle of the backyard, never on the house
+            dep=max(np.dot(np.array(p)-r["m"],r["n"]) for p in r["lot"].exterior.coords)
+            c=r["m"]+r["n"]*(7.5+10+(dep-17.5)*0.55)
         if kind=="Treehouse":
             c=np.array(SPOTS[li]); assert len(c)==2, "no treehouse spot"
         sites.append('new SiteDef("%s",SiteKind.%s,%d,%s,%s)'%(label,kind,li,arr(c),F(rad)))
@@ -156,9 +224,9 @@ for i,m in enumerate(MAPS):
                 new int[]{%s})'''%(name,m["note"].replace('"',"'"),STARTS[i],arr(ring.ravel()),arr(att),arr(dfn),
         ", ".join(sites),
         ", ".join('new Roadblock(Roadblock.Kind.%s,%s,%s)'%(kd,arr(p),arr(dd)) for p,dd,kd in rbs),
-        ", ".join('new Edge(%s,%s,Edge.Kind.%s)'%(arr(p),arr(q),c.replace("|F","Fenced")) for p,q,c in pcs),
+        ", ".join('new Edge(%s,%s,Edge.Kind.%s)'%(arr(p),arr(q),c.replace("|F","Fenced")) for p,q,c,_ in pcs),
         ",".join(map(str,lots)),",".join(map(str,fen))))
-    print(name,len(lots),"lots",len(fen),"fences",len(pcs),"edges",len(rbs),"blocks",[c for _,_,c in pcs])
+    print(name,len(lots),"lots",len(fen),"fences",len(pcs),"edges",len(rbs),"blocks",[c for _,_,c,_ in pcs])
 park="".join("%s,%s,%s,"%(F(x),F(y),F(r)) for x,y,r in D["PARKTREES"])
 out='''// NeighborhoodData.cs   (GENERATED: made by a script from the Maple Park drawings, don't edit by hand)
 // ---------------------------------------------------------------------------
