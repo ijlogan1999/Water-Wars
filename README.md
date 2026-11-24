@@ -76,16 +76,17 @@ screen.
 
 ## 5. What's in the prototype
 
-* **Map:** a generated neighborhood, "Maple Court": 24 houses on three
-  streets (Maple St, Birch Ln, Oak Dr) split by Elm Court down the middle.
-  **Every match picks 3 houses**: the attackers' house (they spawn on the
-  street out front) and two defender houses. Site **A** is a backyard
-  treehouse and site **B** is a garage with a back door into the yard. The
-  addresses show on screen while you shop. Backyards are fenced, so you reach
-  a site through narrow side yards between houses, fence gates, or the
-  garage: several ways in, each one a chokepoint. To get a new map every
-  round instead of every match, set `NewHousesEachRound = true` in
-  `Tuning.cs`.
+* **Maps:** one big neighborhood, **Maple Park**: about 110 houses on a grid
+  of streets, the Willow Ct cul-de-sac, Maple Park (pavilion, playground,
+  courts, ball field), Maple Elementary, and Turtle Creek with a footbridge.
+  Each match is played on a small piece of it. Attackers start on a street,
+  run a narrow lane through two houses' yards, and come out where the two
+  plant sites are. Everything else is closed off by roadblocks (car crash,
+  moving truck, road work, ...), shut gates, fences and hedges. There are six
+  maps: **Park Run, Willow Court, Schoolyard, Creekside, Pine St Backyards,
+  Hickory Corner**. Each match picks one at random (the name shows while you
+  shop). To always play one map, set `MapChoice` in `Tuning.cs` to its number
+  (1 to 6); to switch maps every round, set `NewMapEachRound = true`.
 * **Soak meter:** 0 to 100. Face hits count double, leg hits count 0.75. At
   100 you're Soaked, sit on the curb, and watch a teammate until next round.
   No drying on its own mid-round.
@@ -135,7 +136,9 @@ plain-English note about what it does.
 | `Toys.cs` | All 13 water toys: stats, costs, and the real toy each is based on. |
 | `Definitions.cs` | Teams and the placeholder heroes. |
 | `GameBootstrap.cs` | The starting point. Builds the light, map, kids, referee and HUD when you press Play. |
-| `MapBuilder.cs` | Generates the neighborhood and picks the 3 houses for the match. |
+| `MapBuilder.cs` | Builds the chosen map out of grey boxes: houses, fences, park, school, roadblocks. |
+| `NeighborhoodData.cs` | Every house, fence, gate and map of Maple Park as numbers (made by the scripts in `Tools/`, don't edit by hand). |
+| `NeighborhoodTypes.cs` | What a lot, a map, a site and a roadblock look like as data. |
 | `Kid.cs` | Anyone playing: body, Soak meter, towel, money, toys, moving and shooting. |
 | `PlayerController.cs` | Turns your mouse and keyboard into actions, and runs your camera. |
 | `BotBrain.cs` | The computer players. |

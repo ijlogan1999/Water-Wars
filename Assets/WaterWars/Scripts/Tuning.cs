@@ -18,9 +18,13 @@ namespace WaterWars
         public const int SwapSidesAfterRound = 6; // Teams switch attack/defend after round 6.
 
         // ---- Map -----------------------------------------------------------
-        // Every match picks 3 houses from the neighborhood. Set this to true to
-        // pick 3 new houses every ROUND instead (a new map each round).
-        public const bool NewHousesEachRound = false;
+        // Every match picks one of the Maple Park maps (see NeighborhoodData.Maps):
+        //   1 Park Run, 2 Willow Court, 3 Schoolyard, 4 Creekside,
+        //   5 Pine St Backyards, 6 Hickory Corner.
+        // 0 = a random one each match. Set a number to always play that map.
+        public const int MapChoice = 0;
+        // Set this to true to switch to a different map every ROUND instead.
+        public const bool NewMapEachRound = false;
 
         // ---- Round timers --------------------------------------------------
         public const float BuyPhaseSeconds = 30f;     // "Allowance phase". Press Enter to skip it.

@@ -119,7 +119,7 @@ namespace WaterWars
         // =====================================================================
         void StartRound()
         {
-            if (Tuning.NewHousesEachRound && Round > 1) Map = GameBootstrap.RegenerateMap();
+            if (Tuning.NewMapEachRound && Round > 1) Map = GameBootstrap.RegenerateMap();
             SuddenDeath = Round > Tuning.SwapSidesAfterRound * 2;
             Attackers = Round <= Tuning.SwapSidesAfterRound || SuddenDeath ? Team.Orange : Team.Teal;
             PlaceEveryone(true);

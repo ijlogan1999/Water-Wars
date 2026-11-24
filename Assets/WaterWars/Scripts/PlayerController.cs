@@ -196,7 +196,7 @@ namespace WaterWars
                 // Nobody left: watch from high above the middle of the map.
                 Spectating = null;
                 Cam.transform.SetParent(transform.parent, false);
-                Cam.transform.position = new Vector3(0f, 60f, -40f);
+                Cam.transform.position = rm.Map.Center + new Vector3(0f, 60f, -40f);
                 Cam.transform.rotation = Quaternion.Euler(60f, 0f, 0f);
                 return;
             }

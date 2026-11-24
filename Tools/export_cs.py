@@ -1,0 +1,209 @@
+import pickle, random, numpy as np
+from shapely.geometry import box, Point, LineString, Polygon, MultiPoint
+from shapely.geometry.polygon import orient
+from shapely.ops import unary_union, split, linemerge
+D=pickle.load(open("rec.pkl","rb")); REC=D["REC"]
+# --- map definitions (shared with the drawings) ---
+src=open("maps5.py").read().split("# individual sheets")[0]
+src=src.replace('img=plt.imread("base.png"); ','')
+g={}; exec(src,g)
+MAPS=g["MAPS"]; blocks=g["blocks"]; ST=g["ST"]; KINDS=g["KINDS"]
+rng=random.Random(11)
+F=lambda v: (("%.2f"%v).rstrip("0").rstrip(".")+"f") if abs(round(v,2)-round(v))>1e-9 else str(int(round(v)))
+def arr(vals): return "new float[]{"+",".join(F(float(v)) for v in vals)+"}"
+key={ (r["street"],r["num"]):i for i,r in enumerate(REC)}
+# ---------- lots ----------
+def extents(poly,c,t,n):
+    pts=np.array(poly.exterior.coords)
+    a=[np.dot(p-c,t) for p in pts]; b=[np.dot(p-c,n) for p in pts]
+    return max(a)-min(a), max(b)-min(b)
+THING={0.22:"Pool",0.32:"Treehouse",0.5:"Shed",0.6:"Trampoline",0.7:"Swings"}
+def thingtype(k):
+    for lim,nm in sorted(THING.items()):
+        if k<lim: return nm
+    return "None"
+lot_lines=[]; SPOTS=[]
+for r in REC:
+    t,n,m=r["t"],r["n"],r["m"]
+    hc=np.array(r["house"].centroid.coords[0]); hw,hd=extents(r["house"],hc,t,n)
+    if r["gar"] is not None: gc=np.array(r["gar"].centroid.coords[0]); garage=[gc[0],gc[1]]
+    else: garage=[]
+    dc=np.array(r["drive"].centroid.coords[0]); dw,dl=extents(r["drive"],dc,t,n)
+    tt="None"; tc=[0,0]
+    if r["thing"] is not None:
+        tt=thingtype(r["k"]); tc=list(r["thing"][0].centroid.coords[0])
+    depth=max(np.dot(np.array(p)-m,n) for p in r["lot"].exterior.coords)
+    back=m+n*(7.5+10+(depth-17.5)*0.55)
+    height=rng.choice([4.2,6.5]); color=rng.randrange(8)
+    blockers=unary_union([r["house"]]+([r["gar"]] if r["gar"] is not None else []))
+    spot=[]
+    for k in np.arange(depth-4.5,15,-0.5):
+        for s_ in (0,-2,2,-4,4,-6,6):
+            c=m+n*k+t*s_
+            fp=Polygon([tuple(c+t*a*2.6+n*b) for a,b in((-1,-10.9),(1,-10.9),(1,4.3),(-1,4.3))])
+            if r["lot"].buffer(-0.3).contains(fp) and not fp.intersects(blockers.buffer(0.8)): spot=list(c); break
+        if spot: break
+    if tt=="Treehouse" and not spot: tt="None"
+    trees=[v for p in r["trees"] for v in p]; SPOTS.append(spot)
+    lot_lines.append('            new LotRec("%s",%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'%(
+        r["street"],r["num"],arr(np.array(orient(r["lot"],1).exterior.coords[:-1]).ravel()),
+        arr(m),arr(t),arr(n),F(r["L"]),arr(hc),F(hw),F(hd),F(height),str(color),arr(garage),arr(dc),F(dl),
+        "Yard."+tt,arr(tc),arr(back),arr(trees),F(depth),arr(spot)))
+# ---------- fences ----------
+merged=linemerge(unary_union(FF:=[f for f in D["FENCES"] if not f.is_empty]))
+verts=MultiPoint([p for r in REC for p in r["lot"].exterior.coords])
+segs=[]
+for ln in getattr(merged,"geoms",[merged]):
+    for piece in split(ln,verts.buffer(0.01)).geoms if True else []:
+        c=list(piece.coords)
+        for a,b in zip(c,c[1:]):
+            if np.hypot(b[0]-a[0],b[1]-a[1])>0.3: segs.append((np.array(a),np.array(b)))
+# join tiny buffer remnants: keep segments > 0.3
+fence_lines=[];gates=[]
+for a,b in segs:
+    mp=Point((a+b)/2); owners=[r for r in REC if r["lot"].exterior.distance(mp)<0.15]
+    L=np.linalg.norm(b-a); d=(b-a)/L
+    isback=len(owners)==2 and np.dot(owners[0]["n"],owners[1]["n"])<-0.5 and abs(np.dot(d,owners[0]["n"]))<0.3
+    if isback: kind=0
+    else:
+        x=rng.random(); kind=1 if x<0.25 else 2 if x<0.4 else 0   # 0 wood, 1 picket, 2 hedge
+    gate = L>=6 and (isback or rng.random()<0.5)
+    if gate:
+        g0=rng.uniform(1.2,L-1.2-2.5)
+        pieces=[(a,a+d*g0),(a+d*(g0+2.5),b)]
+        gc=a+d*(g0+1.25); gates.append((gc,np.array([-d[1],d[0]])))
+    else: pieces=[(a,b)]
+    for p,q in pieces:
+        if np.linalg.norm(q-p)>0.2: fence_lines.append((p,q,kind))
+fence_geom=unary_union([LineString([p,q]) for p,q,_ in fence_lines]+[LineString([gc-np.array([-n[1],n[0]])*1.25,gc+np.array([-n[1],n[0]])*1.25]) for gc,n in gates])
+print("fences",len(fence_lines),"gates",len(gates))
+# ---------- maps ----------
+SCHOOL=box(397.5,181.5,577.5,253.5); PARK=box(202.5,94.5,382.5,166.5)
+roads=unary_union([ST[k].buffer(7.5,cap_style=2) for k in ST if k!="Willow Ct"]+[ST["Willow Ct"].buffer(6,cap_style=2),Point(97.5,172).buffer(15)])
+def classify(p):
+    P=Point(p)
+    if roads.contains(P): return "Street"
+    if PARK.contains(P): return "Park"
+    if SCHOOL.contains(P): return "School"
+    if p[0]>592.5 or p[1]<-7.5 or p[1]>268.5: return "Woods"
+    for r in REC:
+        if r["lot"].contains(P):
+            # front yard (near the street) -> curb
+            return "Curb" if np.dot(np.array(p)-r["m"],r["n"])<7 else "Lot"
+    return "Verge"
+SITES={
+ 0:[("pavilion","Spot",None,(309,142.5),9),("playground","Spot",None,(352,135),9)],
+ 1:[("104 Willow Ct garage","Garage",("Willow Ct",104),None,8),("110 Willow Ct treehouse","Treehouse",("Willow Ct",110),None,8.5)],
+ 2:[("school back doors","Spot",None,(447,207),9),("soccer bleachers","Spot",None,(540,222),9.5)],
+ 3:[("footbridge","Spot",None,(617,131),8),("130 Cedar Ln backyard","Yard",("Cedar Ln",130),(566,140),8)],
+ 4:[("122 Cedar Ln backyard","Yard",("Cedar Ln",122),(476,150),8),("154 Birch Ln garage","Garage",("Birch Ln",154),None,8)],
+ 5:[("166 Birch Ln garage","Garage",("Birch Ln",166),None,8),("100 Hickory Rd backyard","Yard",("Hickory Rd",100),(170,110),8)],
+}
+STARTS={0:"Maple St",1:"Birch Ln",2:"Birch Ln",3:"Maple St",4:"Pine St",5:"Maple St"}
+map_lines=[]
+k0=0
+for i,m in enumerate(MAPS):
+    area=orient(m["area"].simplify(0.05),1)
+    ring=np.array(area.exterior.coords[:-1])
+    near=area.buffer(45)
+    lots=[j for j,r in enumerate(REC) if r["lot"].intersects(near)]
+    fen=[j for j,(p,q,_) in enumerate(fence_lines) if LineString([p,q]).intersects(near)]
+    # boundary pieces
+    pieces=[]
+    ext=list(area.exterior.coords)
+    for a,b in zip(ext,ext[1:]):
+        a=np.array(a);b=np.array(b);L=np.linalg.norm(b-a)
+        if L<0.05: continue
+        d=(b-a)/L; out=np.array([d[1],-d[0]])   # ccw ring: outside is to the right
+        cur=None;start=0
+        steps=max(1,int(L/0.5))
+        for s_ in range(steps+1):
+            u=min(L,s_*L/steps); p=a+d*u
+            c=classify(p+out*0.8)
+            covered=fence_geom.distance(Point(p))<0.35
+            lab=c+("|F" if covered and c in("Lot","Curb") else "")
+            if cur is None: cur=lab;start=u
+            elif lab!=cur or s_==steps:
+                pieces.append((a+d*start,a+d*u,cur)); cur=lab;start=u
+    # merge tiny pieces
+    pcs=[]
+    for p,q,c in pieces:
+        if np.linalg.norm(q-p)<0.01: continue
+        if pcs and (np.linalg.norm(q-p)<1.6 and c.startswith("Verge") or c==pcs[-1][2]) and np.linalg.norm(pcs[-1][1]-p)<0.01:
+            pcs[-1]=(pcs[-1][0],q,pcs[-1][2]); continue
+        pcs.append((p,q,c))
+    blk=blocks(m["area"])
+    rbs=[]
+    for j,(p,dd) in enumerate(blk): rbs.append((p,dd,KINDS[(k0+j)%len(KINDS)].title().replace(" ","")))
+    k0+=len(blk)
+    sites=[]
+    for (label,kind,lk,c,rad) in SITES[i]:
+        li=key[lk] if lk else -1
+        r=REC[li] if lk else None
+        if kind=="Garage": gc=np.array(r["gar"].centroid.coords[0]); c=gc+r["n"]*3.5
+        if kind=="Treehouse":
+            c=np.array(SPOTS[li]); assert len(c)==2, "no treehouse spot"
+        sites.append('new SiteDef("%s",SiteKind.%s,%d,%s,%s)'%(label,kind,li,arr(c),F(rad)))
+    att=np.array(m["att"]);dfn=np.array(m["dfn"])
+    name=m["name"].split(". ",1)[1].replace(" (the one you approved)","")
+    map_lines.append('''            new MapDef("%s", "%s", "%s",
+                %s,
+                %s, %s,
+                new[]{ %s },
+                new[]{ %s },
+                new[]{ %s },
+                new int[]{%s},
+                new int[]{%s})'''%(name,m["note"].replace('"',"'"),STARTS[i],arr(ring.ravel()),arr(att),arr(dfn),
+        ", ".join(sites),
+        ", ".join('new Roadblock(Roadblock.Kind.%s,%s,%s)'%(kd,arr(p),arr(dd)) for p,dd,kd in rbs),
+        ", ".join('new Edge(%s,%s,Edge.Kind.%s)'%(arr(p),arr(q),c.replace("|F","Fenced")) for p,q,c in pcs),
+        ",".join(map(str,lots)),",".join(map(str,fen))))
+    print(name,len(lots),"lots",len(fen),"fences",len(pcs),"edges",len(rbs),"blocks",[c for _,_,c in pcs])
+park="".join("%s,%s,%s,"%(F(x),F(y),F(r)) for x,y,r in D["PARKTREES"])
+out='''// NeighborhoodData.cs   (GENERATED: made by a script from the Maple Park drawings, don't edit by hand)
+// ---------------------------------------------------------------------------
+// The layout of the whole Maple Park neighborhood and its six example maps,
+// written out as plain numbers so the game builds exactly what the drawings
+// show. Positions are in meters: x goes east, y goes north (in Unity, the
+// drawing's y becomes z).
+// ---------------------------------------------------------------------------
+
+namespace WaterWars
+{
+    public static partial class NeighborhoodData
+    {
+        public static readonly LotRec[] Lots =
+        {
+%s
+        };
+
+        // Fences: x1, y1, x2, y2, kind (0 wood, 1 white picket, 2 hedge). Gaps for gates are already left out.
+        public static readonly float[] Fences =
+        {
+            %s
+        };
+
+        // Gates: x, y, then the direction you walk through it.
+        public static readonly float[] Gates =
+        {
+            %s
+        };
+
+        // Trees in Maple Park: x, y, radius.
+        public static readonly float[] ParkTrees = { %s };
+
+        public static readonly MapDef[] Maps =
+        {
+%s
+        };
+    }
+}
+'''%(",\n".join(lot_lines),
+    ",\n            ".join("%s,%s,%s,%s,%d"%(F(p[0]),F(p[1]),F(q[0]),F(q[1]),k) for p,q,k in fence_lines),
+    ",\n            ".join("%s,%s,%s,%s"%(F(c[0]),F(c[1]),F(n[0]),F(n[1])) for c,n in gates),
+    park.rstrip(","),",\n".join(map_lines))
+open("../Assets/WaterWars/Scripts/NeighborhoodData.cs","w").write(out)
+print(len(out))
+
+
+print("treehouse spots",sum(1 for x in SPOTS if x),"of",len(SPOTS), "willow110", SPOTS[key[("Willow Ct",110)]])

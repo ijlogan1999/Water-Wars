@@ -58,8 +58,8 @@ namespace WaterWars
             instance.StartCoroutine(instance.Rebuild());
         }
 
-        /// Throw away the neighborhood and generate a new one with 3 new houses
-        /// (used between rounds when Tuning.NewHousesEachRound is on).
+        /// Throw away the map and build a different one
+        /// (used between rounds when Tuning.NewMapEachRound is on).
         public static MapData RegenerateMap()
         {
             var b = instance;

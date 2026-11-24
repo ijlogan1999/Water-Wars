@@ -56,7 +56,8 @@ namespace WaterWars
         }
 
         /// Fill a rectangle of ground (y = 0) with stones every `spacing` meters.
-        public void BuildGrid(float minX, float maxX, float minZ, float maxZ, float spacing)
+        /// `keep` (optional) throws away stones outside the play area.
+        public void BuildGrid(float minX, float maxX, float minZ, float maxZ, float spacing, System.Func<Vector3, bool> keep = null)
         {
             Physics.SyncTransforms();
             int cols = Mathf.FloorToInt((maxX - minX) / spacing) + 1;
@@ -66,7 +67,7 @@ namespace WaterWars
                 for (int z = 0; z < rows; z++)
                 {
                     var p = new Vector3(minX + x * spacing, 0f, minZ + z * spacing);
-                    grid[x, z] = SpotIsFree(p) ? AddNode(p) : -1;
+                    grid[x, z] = (keep == null || keep(p)) && SpotIsFree(p) ? AddNode(p) : -1;
                 }
 
             // Connect each stone to its 8 neighbors when the way is clear.
