@@ -50,6 +50,7 @@ namespace WaterWars
         public const int HandTowelCost = 4;
         public const float HandTowelAbsorb = 25f;
         public const int BeachTowelCost = 10;
+        public const int BalloonCost = 2;        // water balloon [F]; most heroes carry 1, the Boy Scout 2
         public const float BeachTowelAbsorb = 50f;
 
         // ---- Allowance economy ($) -----------------------------------------

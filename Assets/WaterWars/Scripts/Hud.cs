@@ -1,8 +1,9 @@
 // Hud.cs
 // ---------------------------------------------------------------------------
 // Everything drawn flat on the screen: score and timer, your Soak meter,
-// ammo, allowance, the buy menu, the hero picker, messages, and markers for
-// sites A/B and the Big One.
+// ammo, allowance, the buy menu, the hero picker, your hero's ability and
+// ultimate, status effects, messages, and markers for sites A/B, the Big One
+// and revealed enemies.
 //
 // It uses Unity's simplest drawing tool ("OnGUI", also called IMGUI), which
 // needs no art files at all. That's perfect for a prototype. The design doc's
@@ -59,21 +60,32 @@ namespace WaterWars
             soakedClip = MakeTone("Soaked", 0.3f, 600f, 1200f);
         }
 
-        static AudioClip MakeTone(string name, float seconds, float fromHz, float toHz)
+        /// Make a little sound in code: a tone sliding from one pitch to another.
+        /// `noise` (0..1) mixes in hiss (barks, farts); `wobbleHz` makes it warble (phones ringing).
+        public static AudioClip MakeTone(string name, float seconds, float fromHz, float toHz, float noise = 0f, float wobbleHz = 0f)
         {
             int rate = 44100, n = (int)(rate * seconds);
             var data = new float[n];
             float phase = 0f;
+            var rng = new System.Random(name.GetHashCode());
             for (int i = 0; i < n; i++)
             {
                 float t = (float)i / n;
-                phase += 2f * Mathf.PI * Mathf.Lerp(fromHz, toHz, t) / rate;
-                data[i] = Mathf.Sin(phase) * (1f - t) * 0.5f;
+                float hz = Mathf.Lerp(fromHz, toHz, t);
+                if (wobbleHz > 0f) hz *= 1f + 0.08f * Mathf.Sin(2f * Mathf.PI * wobbleHz * i / rate);
+                phase += 2f * Mathf.PI * hz / rate;
+                float v = Mathf.Sin(phase) * (1f - noise) + ((float)rng.NextDouble() * 2f - 1f) * noise;
+                data[i] = v * (1f - t) * 0.5f;
             }
             var clip = AudioClip.Create(name, n, 1, rate, false);
             clip.SetData(data, 0);
             return clip;
         }
+
+        // Short messages in the middle of the screen ("Nozzle: MIST", "Ring ring!").
+        static string toast;
+        static float toastUntil;
+        public static void Toast(string text) { toast = text; toastUntil = Time.time + 2f; }
 
         GUIStyle big, mid, small, smallRight, center, button, box;
         float s; // scale so the HUD looks the same size on any screen
@@ -110,6 +122,7 @@ namespace WaterWars
             DrawWorldMarkers(rm, pc);
             DrawPopups(pc != null ? pc.Cam : null);
             DrawWetOverlay(player);
+            DrawBlind(player);
             DrawTopBar(rm);
             DrawFeed(rm);
             if (player.Alive)
@@ -119,9 +132,12 @@ namespace WaterWars
                 DrawSoak(player);
                 DrawToys(player);
                 DrawMoneyAndAbility(player, rm);
+                DrawStatus(player);
                 DrawHints(rm, player);
                 DrawProgress(rm, player);
+                if (player.Hero == HeroDef.TattleTale) DrawEnemyUlts(rm);
             }
+            if (Time.time < toastUntil) Label(new Rect(0, Screen.height * 0.67f, Screen.width, 40 * s), toast, center);
             else if (pc != null)
             {
                 string who = pc.Spectating != null ? "Watching " + pc.Spectating.DisplayName + " (click to switch)" : "Your whole crew is soaked";
@@ -164,31 +180,60 @@ namespace WaterWars
             return (t / 60) + ":" + (t % 60).ToString("00");
         }
 
-        // ---- Hero picker ---------------------------------------------------------
+        // ---- Hero picker: 12 heroes, hover to read the kit, click to play ------------
+        HeroDef hoveredHero;
+
         void DrawHeroSelect(RoundManager rm)
         {
-            Fill(new Rect(0, 0, Screen.width, Screen.height), new Color(0.05f, 0.1f, 0.2f, 0.75f));
-            Shadowed(new Rect(0, 60 * s, Screen.width, 80 * s), "WATER WARS", big);
-            Label(new Rect(0, 140 * s, Screen.width, 40 * s), "Grey-box prototype: Big Splash, 5v5 against bots", center);
-            Label(new Rect(0, 200 * s, Screen.width, 40 * s), "Pick a hero (placeholders until the real heroes are ready)", mid);
+            Fill(new Rect(0, 0, Screen.width, Screen.height), new Color(0.05f, 0.1f, 0.2f, 0.8f));
+            Shadowed(new Rect(0, 20 * s, Screen.width, 70 * s), "WATER WARS", big);
+            Label(new Rect(0, 90 * s, Screen.width, 30 * s), "Grey-box prototype: Big Splash, 5v5 against bots. Pick a hero (hover to read, click to play).", center);
 
-            float w = 420 * s, h = 170 * s, gap = 40 * s;
-            float x = (Screen.width - (w * HeroDef.All.Length + gap * (HeroDef.All.Length - 1))) * 0.5f;
-            for (int i = 0; i < HeroDef.All.Length; i++)
+            int cols = 4;
+            float w = 300 * s, h = 82 * s, gap = 14 * s;
+            float gridW = cols * w + (cols - 1) * gap;
+            if (gridW > Screen.width - 20) { float f = (Screen.width - 20) / gridW; w *= f; gap *= f; gridW = Screen.width - 20; }
+            float x0 = (Screen.width - gridW) * 0.5f, y0 = 135 * s;
+            var btn = new GUIStyle(button) { fontSize = (int)(19 * s) };
+            var all = HeroDef.All;
+            HeroDef hover = null;
+            for (int i = 0; i < all.Length; i++)
             {
-                var hero = HeroDef.All[i];
-                var r = new Rect(x + i * (w + gap), 270 * s, w, h);
-                string text = hero.Name + "\nRole: " + hero.Role + "\n[Q] " + hero.AbilityName + " ($" + hero.AbilityCost + "): " + hero.AbilityHelp;
-                if (GUI.Button(r, text, button)) rm.StartMatch(hero);
+                var hero = all[i];
+                var r = new Rect(x0 + (i % cols) * (w + gap), y0 + (i / cols) * (h + gap), w, h);
+                Fill(new Rect(r.x, r.y, 10 * s, r.height), hero.Color);
+                if (GUI.Button(new Rect(r.x + 10 * s, r.y, r.width - 10 * s, r.height), hero.Name + "\n" + hero.Class, btn)) rm.StartMatch(hero);
+                if (r.Contains(Event.current.mousePosition)) hover = hero;
             }
+            if (hover != null) hoveredHero = hover;
+            var show = hoveredHero ?? all[0];
+
+            float py = y0 + 3 * (h + gap) + 6 * s;
+            var panel = new Rect(x0, py, gridW, 300 * s);
+            Fill(panel, Panel);
+            var title = new GUIStyle(mid) { alignment = TextAnchor.UpperLeft };
+            title.normal.textColor = show.Color;
+            Shadowed(new Rect(panel.x + 16 * s, panel.y + 8 * s, gridW, 40 * s), show.Name + "  (" + show.Class + ")", title);
+            Label(new Rect(panel.x + 16 * s, panel.y + 48 * s, gridW - 32 * s, 260 * s), HeroDescription(show), small);
 
             string controls =
-                "CONTROLS\n" +
-                "Mouse: look    Left click: squirt    WASD: move    Space: jump    Ctrl/C: crouch    Shift: walk\n" +
-                "R: reload    1 / 2: Soaker / Squirt Pistol    Q: hero ability    E (hold): plant or disarm the Big One\n" +
-                "G: drop the Big One    B: buy menu (allowance phase)    Enter: skip the allowance phase\n" +
-                "Tab: scoreboard    Esc: free the mouse / settings    [ and ]: mouse sensitivity";
-            Label(new Rect(Screen.width * 0.1f, 480 * s, Screen.width * 0.8f, 200 * s), controls, center);
+                "Mouse: look    Left click: squirt    Right click: scope, or your hero sidearm's extra    WASD: move    Space: jump    Ctrl/C: crouch    Shift: walk\n" +
+                "R: reload    1 / 2: main toy / sidearm    Q: ability    X: ultimate    F: water balloon    V: hero action    E (hold): plant or disarm\n" +
+                "G: drop the Big One    B: Lemonade Stand (allowance phase)    Enter: skip the allowance phase    Tab: scoreboard    Esc: settings";
+            Label(new Rect(x0, panel.yMax + 10 * s, gridW, 100 * s), controls, center);
+        }
+
+        static string HeroDescription(HeroDef h)
+        {
+            string side = h.Sidearm != null ? h.Sidearm.Name : "Squirt Pistol";
+            string t =
+                "Class rule: " + h.ClassRule + "\n" +
+                "Passive - " + h.PassiveName + ": " + h.PassiveHelp + "\n" +
+                "[Q] " + h.AbilityName + " ($" + h.AbilityCost + ", up to " + h.AbilityMaxCharges + "): " + h.AbilityHelp + "\n" +
+                "[X] Ultimate - " + h.UltName + " (" + h.UltCost + " points): " + h.UltHelp + "\n" +
+                "Sidearm: " + side;
+            if (!string.IsNullOrEmpty(h.ActionHelp)) t += "\nExtra: " + h.ActionHelp;
+            return t;
         }
 
         // ---- Top bar: score, round, clock -------------------------------------
@@ -304,10 +349,15 @@ namespace WaterWars
             var glass = new Rect(30 * s, Screen.height - h - 40 * s, w, h);
             Fill(new Rect(glass.x - 4 * s, glass.y - 4 * s, glass.width + 8 * s, glass.height + 8 * s), new Color(1f, 1f, 1f, 0.5f));
             Fill(glass, Panel);
-            float fill = k.Soak / Tuning.SoakedAt;
+            float fill = k.Soak / k.MaxSoak;
             Fill(new Rect(glass.x, glass.yMax - h * fill, w, h * fill), Water);
             Label(new Rect(glass.x - 20 * s, glass.y + h * 0.35f, w + 40 * s, 40 * s), Mathf.RoundToInt(k.Soak).ToString(), mid);
-            Label(new Rect(glass.x - 10 * s, glass.yMax + 4 * s, 200 * s, 30 * s), "SOAK", small);
+            Label(new Rect(glass.x - 10 * s, glass.yMax + 4 * s, 200 * s, 30 * s), "SOAK /" + Mathf.RoundToInt(k.MaxSoak), small);
+            // Shields from teammates' heroes, stacked above the glass.
+            string extra = "";
+            if (k.Shield > 0f) extra += "Laundry shield " + Mathf.RoundToInt(k.Shield) + "\n";
+            if (k.Sunscreen > 0f) extra += "Sunscreen " + Mathf.RoundToInt(k.Sunscreen) + "\n";
+            if (extra != "") Label(new Rect(glass.x - 10 * s, glass.y - 60 * s, 300 * s, 56 * s), extra, small);
 
             // Towel bar next to the glass.
             if (k.Towel > 0f)
@@ -337,11 +387,58 @@ namespace WaterWars
 
         void DrawMoneyAndAbility(Kid k, RoundManager rm)
         {
-            float w = 420 * s;
-            var r = new Rect((Screen.width - w) * 0.5f, Screen.height - 70 * s, w, 50 * s);
+            float w = 760 * s;
+            var r = new Rect((Screen.width - w) * 0.5f, Screen.height - 96 * s, w, 76 * s);
             Fill(r, Panel);
-            string ability = k.Hero != null ? "[Q] " + k.Hero.AbilityName + " x" + k.AbilityCharges : "";
-            Label(new Rect(r.x + 14 * s, r.y + 10 * s, w, 30 * s), "$" + k.Money + "      " + ability, small);
+            if (k.Hero == null) return;
+            var h = k.Hero;
+            string ult = k.UltReady ? "READY!" : k.UltPoints + "/" + h.UltCost;
+            string line1 = "$" + k.Money + "     [Q] " + h.AbilityName + " x" + k.AbilityCharges +
+                           "     [X] " + h.UltName + " " + ult + "     [F] Balloons x" + k.Balloons;
+            Label(new Rect(r.x + 14 * s, r.y + 6 * s, w - 28 * s, 30 * s), line1, small);
+            // Ult charge bar.
+            Fill(new Rect(r.x + 14 * s, r.y + 36 * s, w - 28 * s, 5 * s), new Color(1f, 1f, 1f, 0.15f));
+            Fill(new Rect(r.x + 14 * s, r.y + 36 * s, (w - 28 * s) * Mathf.Clamp01((float)k.UltPoints / h.UltCost), 5 * s),
+                k.UltReady ? new Color(1f, 0.85f, 0.2f) : h.Color);
+            string line2 = h.Name + ": " + h.PassiveName;
+            if (k.Kit != null && !string.IsNullOrEmpty(k.Kit.Status)) line2 += "     " + k.Kit.Status;
+            Label(new Rect(r.x + 14 * s, r.y + 44 * s, w - 28 * s, 30 * s), line2, small);
+        }
+
+        // ---- Things other heroes did to you ------------------------------------------
+        void DrawStatus(Kid k)
+        {
+            var bits = new System.Collections.Generic.List<string>();
+            if (k.Revealed) bits.Add("REVEALED");
+            if (k.Blinded) bits.Add("Hot sauce in your eyes");
+            if (k.Disoriented) bits.Add("Dizzy");
+            if (k.Rattled) bits.Add("Rattled (shaky aim)");
+            if (k.Laughing) bits.Add("Laughing (can't squirt)");
+            if (k.Slowed) bits.Add("Slowed");
+            if (HeroWorld.AbilitiesBlockedAt(k.transform.position)) bits.Add("A parent is watching: no abilities");
+            if (bits.Count == 0) return;
+            var st = new GUIStyle(center);
+            st.normal.textColor = new Color(1f, 0.75f, 0.4f);
+            Label(new Rect(0, Screen.height - 135 * s, Screen.width, 30 * s), string.Join("   |   ", bits.ToArray()), st);
+        }
+
+        void DrawBlind(Kid k)
+        {
+            if (!k.Alive || !k.Blinded) return;
+            float a = Mathf.Clamp01(k.BlindLeft / 0.6f) * 0.85f;
+            Fill(new Rect(0, 0, Screen.width, Screen.height), new Color(1f, 0.55f, 0.35f, a));
+        }
+
+        /// Tattle Tale's passive: which enemies have their ultimate ready.
+        void DrawEnemyUlts(RoundManager rm)
+        {
+            string t = "I'M TELLING (enemy ultimates):\n";
+            foreach (var k in rm.Kids)
+            {
+                if (k.Team == rm.Player.Team || k.Hero == null) continue;
+                t += k.DisplayName + " (" + k.Hero.Name + "): " + (k.UltReady ? "READY" : k.UltPoints + "/" + k.Hero.UltCost) + "\n";
+            }
+            Label(new Rect(20 * s, 230 * s, 520 * s, 200 * s), t, small);
         }
 
         // ---- What should I be doing? -------------------------------------------------
@@ -391,7 +488,7 @@ namespace WaterWars
         {
             if (!k.Alive) return;
             float recent = Mathf.Clamp01(1f - (Time.time - k.LastHitTime) / 0.4f);
-            float a = recent * 0.35f + (k.Soak / Tuning.SoakedAt) * 0.12f;
+            float a = recent * 0.35f + (k.Soak / k.MaxSoak) * 0.12f;
             if (a <= 0.01f) return;
             float edge = 90 * s;
             var c = new Color(0.2f, 0.5f, 1f, a);
@@ -422,6 +519,18 @@ namespace WaterWars
             foreach (var k in rm.Kids)
                 if (k != rm.Player && k.Team == rm.Player.Team && k.Alive)
                     Marker(cam, k.transform.position + Vector3.up * 2.2f, k.DisplayName, TeamInfo.Color(k.Team), small, true);
+
+            // Enemies someone on your crew revealed (Satellite, Phone Call, Jenny, cushions...): seen through walls.
+            bool bigEars = rm.Player.Hero == HeroDef.ClassClown && rm.Player.Alive;
+            foreach (var k in rm.Kids)
+            {
+                if (k.Team == rm.Player.Team || !k.Alive) continue;
+                if (k.Revealed)
+                    Marker(cam, k.transform.position + Vector3.up * 2.3f, "[ " + k.DisplayName + " ]", new Color(1f, 0.3f, 0.25f), small);
+                else if (bigEars && k.HorizontalSpeed > Tuning.WalkSpeed + 0.5f &&
+                         Vector3.Distance(k.transform.position, rm.Player.transform.position) <= 25f)
+                    Marker(cam, k.transform.position + Vector3.up * 1.2f, "(( footsteps ))", new Color(1f, 0.8f, 0.4f, 0.8f), small);
+            }
         }
 
         void Marker(Camera cam, Vector3 world, string text, Color color, GUIStyle st, bool hideNearCrosshair = false)
@@ -476,7 +585,8 @@ namespace WaterWars
             }
 
             // Bottom row: towels and ability.
-            float by = r.yMax - 175 * s, bw = (w - gap * 4) / 3f;
+            int items = System.Enum.GetValues(typeof(ShopItem)).Length;
+            float by = r.yMax - 175 * s, bw = (w - gap * (items + 1)) / items;
             int i = 0;
             foreach (ShopItem item in System.Enum.GetValues(typeof(ShopItem)))
             {

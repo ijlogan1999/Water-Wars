@@ -14,6 +14,7 @@
 // ---------------------------------------------------------------------------
 
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace WaterWars
@@ -38,6 +39,7 @@ namespace WaterWars
             public bool Hit;          // touched anything at all
             public Vector3 Point;
             public HitZone Zone;      // non-null if it touched a kid's body part
+            public Soakable Thing;    // non-null if it touched a hero gadget (butler, fan, Jenny, Toy Wall)
         }
 
         /// Trace a line and find the first thing that counts, skipping the shooter's own body
@@ -52,15 +54,22 @@ namespace WaterWars
                 var h = hitBuffer[i];
                 if (h.distance >= best) continue;
                 var zone = h.collider.GetComponent<HitZone>();
+                Soakable thing = null;
                 if (zone != null)
                 {
                     if (zone.Owner == shooter || zone.Owner.IsOut) continue;
                 }
-                else if (h.collider.isTrigger) continue;
+                else
+                {
+                    thing = h.collider.GetComponentInParent<Soakable>();
+                    // See-through gadgets (the butler, Jenny) only stop the other crew's water.
+                    if (h.collider.isTrigger && (thing == null || (shooter != null && thing.Team == shooter.Team))) continue;
+                }
                 best = h.distance;
                 result.Hit = true;
                 result.Point = h.point;
                 result.Zone = zone;
+                result.Thing = thing;
             }
             return result;
         }
@@ -77,6 +86,7 @@ namespace WaterWars
                 Hud.ShowHitMarker(zone.Zone == HitZoneType.Head, amount, zone.transform.position, victim.IsOut);
             // A big splash on whoever got hit, so everyone can see the hit land.
             Splash(zone.transform.position, WaterColor, 10, 2.5f);
+            if (shooter != null && shooter.Kit != null) shooter.Kit.OnShotHit(victim, zone.Zone == HitZoneType.Head);
             return true;
         }
 
@@ -86,6 +96,7 @@ namespace WaterWars
             var c = Trace(origin, dir, toy.Range, shooter);
             Vector3 end = c.Hit ? c.Point : origin + dir * toy.Range;
             if (c.Zone != null) Soak(shooter, c.Zone, toy.SoakPerHit, Vector3.Distance(origin, end), toy.Range, toy.FalloffStart);
+            else if (c.Thing != null) c.Thing.TakeSoak(toy.SoakPerHit, shooter);
             if (c.Hit) Splash(end, WaterColor, toy.Pellets > 1 ? 2 : 5, 2f);
 
             // Draw a short-lived streak. For you, start it a bit to the right and below
@@ -130,6 +141,13 @@ namespace WaterWars
                 k.TakeSoak(amount, shooter, center);
                 if (shooter != null && shooter.IsPlayer) Hud.ShowHitMarker(false, amount, chest, k.IsOut);
             }
+            // Hero gadgets caught in the burst.
+            foreach (var t in Soakable.All.ToArray())
+            {
+                if (t == null || (shooter != null && t.Team == shooter.Team)) continue;
+                float d = Vector3.Distance(center, t.transform.position + Vector3.up * 0.5f);
+                if (d <= radius + 0.5f) t.TakeSoak(Mathf.Lerp(soakCenter, soakEdge, Mathf.Clamp01(d / radius)), shooter);
+            }
         }
 
         /// A burst of droplets (pure decoration).
@@ -154,6 +172,7 @@ namespace WaterWars
         public float Range;
         public float FalloffStart;
         public float SplashRadius; // > 0 means it's a balloon that bursts in an area
+        public System.Action<Vector3> OnBurst;  // extra effects where it lands (hot sauce, stink bombs)
 
         float traveled;
         float age;
@@ -170,17 +189,22 @@ namespace WaterWars
                 var c = WaterShots.Trace(transform.position, step / len, len, Shooter);
                 if (c.Hit)
                 {
-                    Burst(c.Point, c.Zone);
+                    Burst(c.Point, c.Zone, c.Thing);
                     return;
                 }
             }
             transform.position += step;
             traveled += len;
-            if (traveled > Range || age > 4f || transform.position.y < -5f) Destroy(gameObject);
+            if (traveled > Range || age > 4f || transform.position.y < -5f)
+            {
+                if (OnBurst != null) OnBurst(transform.position);
+                Destroy(gameObject);
+            }
         }
 
-        void Burst(Vector3 at, HitZone zone)
+        void Burst(Vector3 at, HitZone zone, Soakable thing)
         {
+            if (OnBurst != null) OnBurst(at);
             if (SplashRadius > 0f)
             {
                 WaterShots.AreaSoak(Shooter, at, SplashRadius, 45f, 20f);
@@ -188,7 +212,8 @@ namespace WaterWars
             }
             else
             {
-                if (zone != null) WaterShots.Soak(Shooter, zone, SoakPerHit, traveled, Range, FalloffStart);
+                if (zone != null && SoakPerHit > 0f) WaterShots.Soak(Shooter, zone, SoakPerHit, traveled, Range, FalloffStart);
+                else if (thing != null && SoakPerHit > 0f) thing.TakeSoak(SoakPerHit, Shooter);
                 WaterShots.Splash(at, WaterShots.WaterColor, 4, 1.8f);
             }
             Destroy(gameObject);

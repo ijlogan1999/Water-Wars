@@ -6,12 +6,14 @@
 //   * a body (head / body / legs zones that water can hit)
 //   * the Soak meter (0 to 100; at 100 you're Soaked and sit on the curb)
 //   * a towel (armor that soaks up water before your meter fills)
-//   * allowance money, water toys, and a hero ability
+//   * allowance money, water toys, and a hero (see HeroKit.cs)
 //   * moving, jumping, crouching
+//   * status effects heroes put on each other: blinded, disoriented,
+//     rattled, slowed, laughing, revealed, shields
 //
 // WHO controls the kid is a separate script: PlayerController (your mouse and
 // keyboard) or BotBrain (the computer). Both just call the methods here, like
-// Move(), TryFire() and TryUseAbility(). Later, for online play, a third
+// Move(), TryFire(), TryUseAbility() and TryUseUltimate(). Later, for online play, a third
 // controller will drive kids from the network in the same way.
 // ---------------------------------------------------------------------------
 
@@ -59,6 +61,9 @@ namespace WaterWars
         public Team Team;
         public bool IsPlayer;
         public HeroDef Hero;
+        public HeroKit Kit;        // the code behind the hero (HeroKits.cs)
+        public float MaxSoak { get { return Hero != null ? Hero.MaxSoak : Tuning.SoakedAt; } }
+        public Vector3 Spawn;      // where this kid started the round
 
         // ---- Soak and towel ----------------------------------------------
         public float Soak { get; private set; }
@@ -75,11 +80,15 @@ namespace WaterWars
         public ToyState Primary;              // null until you buy one
         public bool UsingPrimary;
         public int AbilityCharges;
+        public int Balloons;                  // water balloons [F]
+        public int UltPoints;
+        public bool UltReady { get { return Hero != null && UltPoints >= Hero.UltCost; } }
+        ToyDef HeroSidearm { get { return Kit != null ? Kit.Sidearm : ToyDef.SquirtPistol; } }
         public ToyState Current { get { return UsingPrimary && Primary != null ? Primary : Sidearm; } }
         public bool Reloading { get { return reloadingToy != null; } }
         public float ReloadProgress
         {
-            get { return reloadingToy == null ? 0f : 1f - Mathf.Clamp01((reloadDoneTime - Time.time) / reloadingToy.Def.ReloadSeconds); }
+            get { return reloadingToy == null ? 0f : 1f - Mathf.Clamp01((reloadDoneTime - Time.time) / reloadDuration); }
         }
 
         // ---- Body parts ------------------------------------------------------
@@ -97,9 +106,58 @@ namespace WaterWars
         /// Fired whenever this kid shoots (the on-screen toy uses it to kick back).
         public System.Action OnFired;
 
+        // ---- Status effects (from other heroes' kits) ------------------------
+        float revealUntil, blindUntil, disorientUntil, rattleUntil, laughUntil, slowUntil;
+        float slowFactor = 1f;
+        float shield, shieldUntil;
+        public float Sunscreen;      // Mama's Boy: soaks up water before your towel, until it's used up
+        public bool Revealed { get { return Time.time < revealUntil; } }
+        public bool Blinded { get { return Time.time < blindUntil; } }
+        public float BlindLeft { get { return Mathf.Max(0f, blindUntil - Time.time); } }
+        public bool Disoriented { get { return Time.time < disorientUntil; } }
+        public bool Rattled { get { return Time.time < rattleUntil; } }
+        public bool Laughing { get { return Time.time < laughUntil; } }
+        public bool Slowed { get { return Time.time < slowUntil || HeroWorld.OnBricks(transform.position); } }
+        public float Shield { get { return Time.time < shieldUntil ? shield : 0f; } }
+
+        // All of these are capped at 2 seconds (design doc rule), except reveals and slows.
+        public void Reveal(float seconds) { revealUntil = Mathf.Max(revealUntil, Time.time + seconds); }
+        public void Blind(float seconds) { blindUntil = Mathf.Max(blindUntil, Time.time + Mathf.Min(2f, seconds)); }
+        public void Disorient(float seconds) { disorientUntil = Mathf.Max(disorientUntil, Time.time + Mathf.Min(2f, seconds)); }
+        public void Rattle(float seconds) { rattleUntil = Mathf.Max(rattleUntil, Time.time + seconds); }
+        public void Laugh(float seconds) { laughUntil = Mathf.Max(laughUntil, Time.time + Mathf.Min(2f, seconds)); }
+        public void Slow(float factor, float seconds)
+        {
+            if (Time.time >= slowUntil || factor < slowFactor) slowFactor = factor;
+            slowUntil = Mathf.Max(slowUntil, Time.time + seconds);
+        }
+        public void GiveShield(float amount, float seconds) { shield = amount; shieldUntil = Time.time + seconds; }
+        public void AddUltPoints(int n) { if (Hero != null) UltPoints = Mathf.Min(Hero.UltCost, UltPoints + n); }
+
+        /// Everything that changes how fast you run right now.
+        public float SpeedMultiplier
+        {
+            get
+            {
+                float m = Hero != null ? Hero.SpeedMultiplier : 1f;
+                if (Kit != null) m *= Kit.SpeedFactor;
+                if (Time.time < slowUntil) m *= slowFactor;
+                if (HeroWorld.OnBricks(transform.position)) m *= 0.6f;
+                if (Laughing) m *= 0.5f;
+                return m;
+            }
+        }
+
+        // Dodge roll and shoves.
+        Vector3 dashVelocity, knockVelocity;
+        float dashUntil;
+        public Vector3 LastMoveWish { get; private set; }
+        Transform hat;
+
         float nextShotTime;
         float reloadDoneTime;
         ToyState reloadingToy;
+        float reloadDuration = 1f;
         float verticalVelocity;
         float eyeHeight = 1.6f;
         Renderer[] wetRenderers;
@@ -144,6 +202,12 @@ namespace WaterWars
             // A team-colored bandana so you can tell crews apart at a glance.
             var bandana = Shapes.Box("Bandana", Vector3.zero, new Vector3(0.5f, 0.12f, 0.5f), teamColor, model, false);
             bandana.transform.localPosition = new Vector3(0f, 1.74f, 0f);
+
+            // A cap in the hero's color (set when a hero is picked).
+            var cap = Shapes.Box("Hero Cap", Vector3.zero, new Vector3(0.44f, 0.1f, 0.56f), Color.white, model, false);
+            cap.transform.localPosition = new Vector3(0f, 1.84f, 0.04f);
+            cap.SetActive(false);
+            kid.hat = cap.transform;
 
             kid.wetRenderers = new[] { legs.GetComponent<Renderer>(), body.GetComponent<Renderer>() };
             kid.dryColors = new[] { jeans, teamColor };
@@ -199,6 +263,7 @@ namespace WaterWars
         // =====================================================================
         void Update()
         {
+            if (Kit != null && Alive) Kit.Tick();
             if (reloadingToy != null && Time.time >= reloadDoneTime)
             {
                 reloadingToy.Ammo = reloadingToy.Def.TankShots;
@@ -208,12 +273,12 @@ namespace WaterWars
             if (burstLeft > 0 && Time.time >= nextBurstShot)
             {
                 var toy = Current;
-                if (!CanAct || toy.Ammo <= 0) burstLeft = 0;
+                if (!CanAct || !FireAllowed || toy.Ammo <= 0) burstLeft = 0;
                 else
                 {
                     toy.Ammo--;
                     burstLeft--;
-                    nextBurstShot = Time.time + toy.Def.BurstInterval;
+                    nextBurstShot = Time.time + toy.Def.BurstInterval / FireRate;
                     FireOneShot(toy.Def, AimDirection);
                     if (toy.Ammo <= 0 && burstLeft == 0) StartReload();
                 }
@@ -247,7 +312,11 @@ namespace WaterWars
 
             wish.y = 0f;
             if (wish.sqrMagnitude > 1f) wish.Normalize();
-            Vector3 horizontal = wish * speed;
+            LastMoveWish = wish;
+            Vector3 horizontal = wish * speed * SpeedMultiplier;
+            if (Time.time < dashUntil) horizontal = dashVelocity;
+            horizontal += knockVelocity;
+            knockVelocity = Vector3.MoveTowards(knockVelocity, Vector3.zero, 30f * Time.deltaTime);
             HorizontalSpeed = horizontal.magnitude;
             Controller.Move((horizontal + Vector3.up * verticalVelocity) * Time.deltaTime);
         }
@@ -280,6 +349,24 @@ namespace WaterWars
 
         public Vector3 AimDirection { get { return Eye.forward; } }
 
+        /// A quick 6 m roll the way you're moving (or forward if standing still).
+        public bool DodgeRoll()
+        {
+            if (!Controller.enabled || !Grounded) return false;
+            Vector3 dir = LastMoveWish.sqrMagnitude > 0.01f ? LastMoveWish.normalized : transform.forward;
+            dir.y = 0f;
+            dashVelocity = dir.normalized * 24f;
+            dashUntil = Time.time + 0.25f;
+            return true;
+        }
+
+        /// Get pushed (the Bully's shove).
+        public void Knock(Vector3 velocity)
+        {
+            knockVelocity = new Vector3(velocity.x, 0f, velocity.z);
+            if (velocity.y > 0f && Grounded) verticalVelocity = velocity.y;
+        }
+
         /// Jump instantly to a spot (used at the start of each round).
         public int TeleportCount { get; private set; }
 
@@ -300,6 +387,8 @@ namespace WaterWars
         // =====================================================================
 
         bool CanAct { get { return Alive && RoundManager.Instance != null && RoundManager.Instance.CombatAllowed; } }
+        bool FireAllowed { get { return !Laughing && (Kit == null || Kit.CanFire); } }
+        float FireRate { get { return Kit != null ? Kit.FireRateFactor : 1f; } }
 
         public void SwitchTo(bool primary)
         {
@@ -318,18 +407,18 @@ namespace WaterWars
         /// Try to shoot in a direction. `triggerJustPressed` matters for click-per-shot toys like the pistol.
         public bool TryFire(Vector3 aimDirection, bool triggerJustPressed)
         {
-            if (!CanAct || Reloading || burstLeft > 0) return false;
+            if (!CanAct || !FireAllowed || Reloading || burstLeft > 0) return false;
             var toy = Current;
             if (!toy.Def.HoldToFire && !triggerJustPressed) return false;
             if (Time.time < nextShotTime) return false;
             if (toy.Ammo <= 0) { StartReload(); return false; }
 
-            nextShotTime = Time.time + 1f / toy.Def.ShotsPerSecond;
+            nextShotTime = Time.time + 1f / (toy.Def.ShotsPerSecond * FireRate);
             toy.Ammo--;
             FireOneShot(toy.Def, aimDirection);
             // Burst toys fire the rest of the burst over the next few frames (see Update).
             burstLeft = toy.Def.Burst - 1;
-            nextBurstShot = Time.time + toy.Def.BurstInterval;
+            nextBurstShot = Time.time + toy.Def.BurstInterval / FireRate;
             if (toy.Ammo <= 0 && burstLeft == 0) StartReload();
             return true;
         }
@@ -343,6 +432,8 @@ namespace WaterWars
             float spread = Zoomed && def.ZoomFov > 0f ? def.ZoomedSpreadDegrees : def.SpreadDegrees;
             if (HorizontalSpeed > Tuning.WalkSpeed + 0.5f || !Grounded) spread += def.MovingSpreadDegrees;
             if (Crouching) spread *= 0.7f;
+            if (Rattled) spread += 5f;        // the Bully's insults
+            if (Disoriented) spread += 4f;
 
             // Spray toys fire several drops at once. Each drop wobbles on its own.
             Vector3 center = WaterShots.Wobble(aimDirection, def.Pellets > 1 ? 0f : spread);
@@ -356,6 +447,7 @@ namespace WaterWars
                     WaterShots.Instant(this, Eye.position, dir, def, i == 0);
             }
             if (OnFired != null) OnFired();
+            if (Kit != null) Kit.OnFired();
         }
 
         public void StartReload()
@@ -363,32 +455,83 @@ namespace WaterWars
             var toy = Current;
             if (Reloading || toy.Ammo >= toy.Def.TankShots || !Alive) return;
             reloadingToy = toy;
-            reloadDoneTime = Time.time + toy.Def.ReloadSeconds;
+            reloadDuration = toy.Def.ReloadSeconds / (Kit != null ? Kit.ReloadFactor : 1f);
+            reloadDoneTime = Time.time + reloadDuration;
         }
 
         // =====================================================================
-        // Hero ability
+        // Hero: picking one, ability [Q], ultimate [X], extras [V] / right-click,
+        // water balloons [F]
         // =====================================================================
+        public void SetHero(HeroDef hero)
+        {
+            Hero = hero;
+            Kit = hero.MakeKit();
+            Kit.Kid = this;
+            UltPoints = 0;
+            Sidearm = new ToyState(HeroSidearm);
+            hat.gameObject.SetActive(true);
+            var r = hat.GetComponent<Renderer>();
+            r.sharedMaterial = Shapes.Mat(hero.Color);
+            if (IsPlayer) r.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
+        }
+
+        bool AbilitiesAllowed { get { return CanAct && Kit != null && !HeroWorld.AbilitiesBlockedAt(transform.position); } }
+
         public bool TryUseAbility(Vector3 aimDirection)
         {
-            if (!CanAct || Hero == null || AbilityCharges <= 0) return false;
-            switch (Hero.Ability)
+            if (!AbilitiesAllowed || AbilityCharges <= 0) return false;
+            if (!Kit.UseAbility(aimDirection)) return false;
+            AbilityCharges--;
+            return true;
+        }
+
+        public bool TryUseUltimate(Vector3 aimDirection)
+        {
+            if (!AbilitiesAllowed || !UltReady) return false;
+            if (!Kit.UseUltimate(aimDirection)) return false;
+            UltPoints = 0;
+            if (RoundManager.Instance != null) RoundManager.Instance.AddFeed(DisplayName + " used " + Hero.UltName + "!");
+            return true;
+        }
+
+        /// [V]: the Bully's shove, the Twins' switch.
+        public bool TryHeroAction(Vector3 aimDirection)
+        {
+            return CanAct && Kit != null && Kit.HeroAction(aimDirection);
+        }
+
+        /// Right-click with a toy that has no scope.
+        public bool TryAltFire(Vector3 aimDirection)
+        {
+            return CanAct && Kit != null && !Laughing && Kit.AltFire(aimDirection);
+        }
+
+        /// [F]: throw a water balloon. Bursts and soaks everyone within 3.5 m.
+        public bool ThrowBalloon(Vector3 aimDirection)
+        {
+            if (!CanAct || Balloons <= 0 || Laughing) return false;
+            Balloons--;
+            float speed = Kit != null ? Kit.BalloonSpeed : 19f;
+            Vector3 throwDir = (aimDirection + Vector3.up * 0.15f).normalized;
+            var glob = WaterShots.LaunchGlob(this, Eye.position + aimDirection * 0.6f, throwDir * speed, 14f, 0f, 80f, 80f, 3.5f, 0.35f);
+            if (Kit != null && Kit.HotSauce)
             {
-                case AbilityKind.WaterBalloon:
-                    // A lobbed balloon: slower, falls faster, bursts in an area.
-                    Vector3 throwDir = (aimDirection + Vector3.up * 0.15f).normalized;
-                    WaterShots.LaunchGlob(this, Eye.position + aimDirection * 0.6f, throwDir * 19f, 14f, 0f, 80f, 80f, 3.5f, 0.35f);
-                    break;
-                case AbilityKind.JuiceBox:
+                glob.GetComponent<Renderer>().sharedMaterial = Shapes.Mat(new Color(0.9f, 0.25f, 0.1f));
+                var me = this;
+                glob.OnBurst = at =>
+                {
+                    // Hot sauce: stings the eyes of everyone the burst reaches.
                     foreach (var k in All)
                     {
-                        if (k.Team != Team || !k.Alive) continue;
-                        if (Vector3.Distance(k.transform.position, transform.position) <= 5f) k.Dry(40f);
+                        if (!k.Alive || k.Team == me.Team) continue;
+                        Vector3 chest = k.transform.position + Vector3.up;
+                        if (Vector3.Distance(chest, at) > 3.5f) continue;
+                        if (Physics.Linecast(at + Vector3.up * 0.2f, chest, Shapes.ShotMask, QueryTriggerInteraction.Ignore)) continue;
+                        k.Blind(1.5f);
                     }
-                    WaterShots.Splash(transform.position + Vector3.up * 1.2f, new Color(1f, 0.6f, 0.15f), 14, 3f);
-                    break;
+                };
             }
-            AbilityCharges--;
             return true;
         }
 
@@ -400,18 +543,46 @@ namespace WaterWars
         public void TakeSoak(float amount, Kid attacker, Vector3 fromPosition)
         {
             if (IsOut || amount <= 0f) return;
-            if (Towel > 0f)
+            // Darling's Look at Me!: enemy water meant for a teammate goes to her instead.
+            if (attacker != null && attacker.Team != Team)
             {
-                float absorbed = Mathf.Min(Towel, amount);
-                Towel -= absorbed;
-                amount -= absorbed;
+                var guard = DarlingKit.GuardFor(this);
+                if (guard != null) { guard.TakeSoak(amount, attacker, fromPosition); return; }
             }
+            if (Kit != null) amount = Kit.ModifyIncoming(amount, attacker);
+            if (amount <= 0f) return;
+            amount = Absorb(ref Sunscreen, amount);
+            if (Time.time < shieldUntil) amount = Absorb(ref shield, amount);
+            amount = Absorb(ref Towel, amount);
             LastHitTime = Time.time;
             LastHitFrom = fromPosition;
             LastAttacker = attacker;
-            Soak = Mathf.Min(Tuning.SoakedAt, Soak + amount);
+            if (amount <= 0f) return;
+            Soak = Mathf.Min(MaxSoak, Soak + amount);
+            if (Kit != null) Kit.OnSoakTaken(amount);
             RefreshWetLook();
-            if (Soak >= Tuning.SoakedAt && RoundManager.Instance != null) RoundManager.Instance.OnKidSoaked(this, attacker);
+            if (Soak >= MaxSoak && RoundManager.Instance != null)
+            {
+                if (Kit != null && Kit.KeepInWhenSoaked()) return;   // the Bully's Tantrum
+                RoundManager.Instance.OnKidSoaked(this, attacker);
+            }
+        }
+
+        static float Absorb(ref float pool, float amount)
+        {
+            if (pool <= 0f) return amount;
+            float taken = Mathf.Min(pool, amount);
+            pool -= taken;
+            return amount - taken;
+        }
+
+        /// Out right now, no matter what (the Bully when his Tantrum runs out while soaked).
+        public void ForceOut()
+        {
+            if (IsOut || RoundManager.Instance == null) return;
+            Soak = MaxSoak;
+            RefreshWetLook();
+            RoundManager.Instance.OnKidSoaked(this, LastAttacker);
         }
 
         /// Lower soak (juice boxes, towels-as-abilities). There's no drying on its own mid-round.
@@ -425,7 +596,7 @@ namespace WaterWars
         void RefreshWetLook()
         {
             // Clothes get darker and bluer as they soak up water, so everyone can see who's nearly out.
-            float wet = Soak / Tuning.SoakedAt;
+            float wet = Soak / MaxSoak;
             Color soaked = new Color(0.12f, 0.2f, 0.45f);
             for (int i = 0; i < wetRenderers.Length; i++)
                 wetRenderers[i].sharedMaterial.color = Color.Lerp(dryColors[i], soaked, wet * 0.75f);
@@ -436,6 +607,8 @@ namespace WaterWars
         {
             IsOut = true;
             reloadingToy = null;
+            dashUntil = 0f;
+            knockVelocity = Vector3.zero;
             WantsInteract = false;
             SetCrouch(false);
             Controller.enabled = false;
@@ -451,9 +624,15 @@ namespace WaterWars
             if (!survivedLastRound)
             {
                 Primary = null;
-                Sidearm = new ToyState(ToyDef.SquirtPistol);
+                Sidearm = new ToyState(HeroSidearm);
                 Towel = 0f;
+                Balloons = 0;
             }
+            Spawn = spawn;
+            revealUntil = blindUntil = disorientUntil = rattleUntil = laughUntil = slowUntil = shieldUntil = 0f;
+            Sunscreen = 0f;
+            dashUntil = 0f;
+            knockVelocity = Vector3.zero;
             burstLeft = 0;
             Zoomed = false;
             if (Primary != null) Primary.Ammo = Primary.Def.TankShots;
@@ -470,15 +649,17 @@ namespace WaterWars
             foreach (var z in zones) z.GetComponent<Collider>().enabled = true;
             Controller.enabled = true;
             Teleport(spawn, yaw);
+            if (Kit != null) Kit.OnRoundStart(survivedLastRound);
         }
 
         /// Lose everything (used when teams swap sides at half time).
         public void StripGear()
         {
             Primary = null;
-            Sidearm = new ToyState(ToyDef.SquirtPistol);
+            Sidearm = new ToyState(HeroSidearm);
             Towel = 0f;
             AbilityCharges = 0;
+            Balloons = 0;
             UsingPrimary = false;
         }
     }

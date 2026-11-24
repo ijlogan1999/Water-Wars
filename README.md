@@ -63,9 +63,12 @@ screen.
 | Ctrl or C | Crouch (steadier aim) |
 | Shift | Walk (steadier aim) |
 | R | Reload |
-| Right click (hold) | Scope in (sniper toys) |
+| Right click | Scope in (sniper toys), or your hero sidearm's extra (Boy Scout refill, Mama Logan's nozzle, Class Clown's banana peel) |
 | 1 / 2 | Main toy / sidearm |
-| Q | Hero ability |
+| Q | Hero ability (bought in the Lemonade Stand) |
+| X | Hero ultimate (charges up: see below) |
+| F | Throw a water balloon (bought, $2) |
+| V | Hero action (the Bully's shove, the Twins' switch) |
 | E (hold) | Plant the Big One (attackers) or disarm it (defenders) |
 | G | Drop the Big One for a teammate |
 | B | Buy menu ("Lemonade Stand"), during the allowance phase |
@@ -94,10 +97,19 @@ screen.
 * **Water toys:** 13 of them, one per genre weapon type, each based on a
   real kind of water toy (see the table below). Hover over a toy in the
   buy menu to see its stats. Normal reloads for now.
-* **Two placeholder heroes** (to be replaced by your own): Balloon Kid
-  (Water Balloon: thrown, bursts and soaks nearby enemies) and Juice Kid
-  (Juice Box: dries you and nearby teammates by 40). Abilities are bought
-  each round.
+* **Your 12 heroes**, from the design doc: Richy, Sweet Tooth (Duelists);
+  The Bully, Lil' Timmy, Boy Scout (DPS); Mama Logan, Darling, Mama's Boy
+  (Sentinels); Tattle Tale, Class Clown, Nerd (Utility); The Twins
+  (Specialist). Each has a passive, a bought ability [Q], an ultimate [X]
+  and their own free sidearm. Hover a hero on the pick screen to read the
+  whole kit. Every kid in a match plays a different hero (bots take the
+  rest). Class rules: DPS heroes are soaked at 85 instead of 100,
+  Sentinels run about 5% slower, Utility ultimates take longest to charge.
+* **Ultimate points:** +1 per enemy you soak, +1 at the end of each round,
+  +1 for planting or disarming. Duelists and DPS need 6, Sentinels and the
+  Twins 7, Utility 8.
+* **Water balloons** [F]: $2 each, burst and soak everyone within 3.5 m. Most
+  heroes carry one, the Boy Scout two.
 * **Big Splash:** 30 s allowance phase, 1:40 rounds, 4 s plant, 40 s fuse,
   7 s disarm with a 3.5 s checkpoint, "Streetlights" when time runs out,
   first to 7, sides swap after round 6, sudden death at 6-6.
@@ -134,12 +146,15 @@ plain-English note about what it does.
 | --- | --- |
 | `Tuning.cs` | **All the numbers.** Timers, prices, soak amounts, speeds, bot difficulty. Start here to change how the game feels. |
 | `Toys.cs` | All 13 water toys: stats, costs, and the real toy each is based on. |
-| `Definitions.cs` | Teams and the placeholder heroes. |
+| `Definitions.cs` | Teams and hit zones. |
+| `Heroes.cs` | **The 12 heroes as data**: names, classes, prices, descriptions, and each hero's own sidearm. Change a hero's price or wording here. |
+| `HeroKits.cs` | What each hero actually does, one section per hero, with the numbers right next to what they do. |
+| `HeroKit.cs` | The shared hero machinery: things that can be soaked (butler, fan, Jenny, Toy Wall), zones and clouds, made-in-code sounds. |
 | `GameBootstrap.cs` | The starting point. Builds the light, map, kids, referee and HUD when you press Play. |
 | `MapBuilder.cs` | Builds the chosen map out of grey boxes: houses, fences, park, school, roadblocks. |
 | `NeighborhoodData.cs` | Every house, fence, gate and map of Maple Park as numbers (made by the scripts in `Tools/`, don't edit by hand). |
 | `NeighborhoodTypes.cs` | What a lot, a map, a site and a roadblock look like as data. |
-| `Kid.cs` | Anyone playing: body, Soak meter, towel, money, toys, moving and shooting. |
+| `Kid.cs` | Anyone playing: body, Soak meter, towel, money, toys, moving and shooting, hero ability and ultimate, status effects (blinded, dizzy, rattled, slowed, revealed). |
 | `PlayerController.cs` | Turns your mouse and keyboard into actions, and runs your camera. |
 | `BotBrain.cs` | The computer players. |
 | `WaterShots.cs` | What happens when water leaves a toy: instant hits, arcing water, balloons, splashes. |
@@ -172,7 +187,8 @@ in git. Unity's big `Library` and `Temp` folders are ignored on purpose.
 
 1. Online play: the same game hosted over Steam for up to 10 friends
    (Netcode for GameObjects + Steam).
-2. Your own heroes replacing the placeholders.
+2. Playtesting and balancing the 12 heroes (every number is in `HeroKits.cs`
+   and `Heroes.cs`), then real models and sounds for their gadgets.
 3. Art: your Blender models replace the grey boxes; the golden-hour cartoon
    look and the sticker-style UI from the design doc.
 

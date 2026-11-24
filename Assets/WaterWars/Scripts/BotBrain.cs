@@ -12,6 +12,10 @@
 //     planted, they all go to it and try to disarm it.
 //   Everyone: when they see an enemy, they stop, turn, wait a moment
 //     (reaction time) and squirt, with a bit of wobble in their aim.
+//   Heroes: each hero kit decides when its bot uses the ability, ultimate
+//     and balloons (BotFight / BotIdle in HeroKits.cs). Hero effects work on
+//     bots too: blinded bots lose you, rattled or dizzy bots aim worse, stink
+//     clouds block their view, and revealed enemies get noticed even behind them.
 //
 // Bot difficulty lives in Tuning.cs (reaction time, aim error, sight range).
 // ---------------------------------------------------------------------------
@@ -63,6 +67,7 @@ namespace WaterWars
             ShopForToys(rm);
             if (!rm.Buy(kid, ShopItem.BeachTowel)) rm.Buy(kid, ShopItem.HandTowel);
             while (rm.Buy(kid, ShopItem.Ability)) { }
+            while (kid.Money >= 6 && rm.Buy(kid, ShopItem.Balloon)) { }
 
             if (kid.Team == rm.Defenders)
             {
@@ -114,13 +119,19 @@ namespace WaterWars
                 return;
             }
 
-            if (Time.time >= nextThink)
+            bool think = Time.time >= nextThink;
+            if (think)
             {
                 nextThink = Time.time + 0.15f;
                 LookForEnemies();
             }
 
             bool fighting = target != null && target.Alive;
+            if (think && kid.Kit != null)
+            {
+                if (fighting) kid.Kit.BotFight(target, Vector3.Distance(transform.position, target.transform.position));
+                else kid.Kit.BotIdle();
+            }
             if (fighting) Fight();
             else
             {
@@ -137,6 +148,7 @@ namespace WaterWars
         // ---- Seeing ------------------------------------------------------------
         void LookForEnemies()
         {
+            if (kid.Blinded) { target = null; return; }   // hot sauce in the eyes
             Kid best = null;
             float bestDist = Tuning.BotSightRange;
             bool justHit = Time.time - kid.LastHitTime < 1.5f;
@@ -147,7 +159,8 @@ namespace WaterWars
                 float dist = to.magnitude;
                 if (dist > bestDist) continue;
                 // Bots see in front of them, unless something just hit them.
-                if (!justHit && Vector3.Angle(transform.forward, to) > Tuning.BotSightAngle) continue;
+                // A revealed enemy gets noticed wherever they are (the bot still needs a clear view).
+                if (!justHit && !other.Revealed && Vector3.Angle(transform.forward, to) > Tuning.BotSightAngle) continue;
                 if (!CanSee(other)) continue;
                 best = other;
                 bestDist = dist;
@@ -171,6 +184,7 @@ namespace WaterWars
             foreach (float h in new[] { 1.6f, 1.0f })
             {
                 Vector3 point = other.transform.position + Vector3.up * (other.Crouching ? h * 0.65f : h);
+                if (HeroWorld.CloudBlocks(eye, point)) continue;   // stink clouds work like smoke
                 Vector3 dir = point - eye;
                 var c = WaterShots.Trace(eye, dir.normalized, dir.magnitude + 0.5f, kid);
                 if (c.Zone != null && c.Zone.Owner == other) return true;
@@ -195,6 +209,8 @@ namespace WaterWars
             // Aim error: shrinks the longer the bot has been tracking you.
             float tracking = Mathf.Clamp01((Time.time - targetSeenAt) / 2f);
             float errDeg = Tuning.BotAimErrorDegrees * Mathf.Lerp(1.4f, 0.4f, tracking);
+            if (kid.Rattled) errDeg *= 2.5f;
+            if (kid.Disoriented) errDeg *= 3f;
             aimPoint += aimNoise * Mathf.Tan(errDeg * Mathf.Deg2Rad) * dist;
             if (Random.value < 0.05f) aimNoise = Random.insideUnitSphere;
 

@@ -8,6 +8,9 @@
 //   W A S D      move                 R            reload
 //   Space        jump                 1 / 2        Soaker / Squirt Pistol
 //   Ctrl or C    crouch (steadier)    Q            hero ability
+//   X            hero ultimate        F            throw a water balloon
+//   V            hero action (the Bully's shove, the Twins' switch)
+//   Right click  scope in, or your hero sidearm's extra (refill, nozzle...)
 //   Shift        walk (steadier)      E (hold)     plant / disarm the Big One
 //   G            drop the Big One     B            buy menu (allowance phase)
 //   Enter        skip the allowance phase          Tab   scoreboard
@@ -97,6 +100,12 @@ namespace WaterWars
             Vector2 look = WWInput.MouseDelta() * MouseSensitivity * (Cam.fieldOfView / 85f);
             yaw += look.x;
             pitch = Mathf.Clamp(pitch - look.y, -88f, 88f);
+            // Disoriented (barked at, shoved): your view sways on its own.
+            if (kid.Disoriented)
+            {
+                yaw += Mathf.Sin(Time.time * 5.3f) * 40f * Time.deltaTime;
+                pitch = Mathf.Clamp(pitch + Mathf.Sin(Time.time * 3.7f) * 25f * Time.deltaTime, -88f, 88f);
+            }
             kid.SetLook(yaw, pitch);
 
             // ---- Interact (plant / disarm): hold E. You can't move while doing it.
@@ -122,6 +131,10 @@ namespace WaterWars
             if (WWInput.Pressed(WWKey.R)) kid.StartReload();
             if (!busy && (WWInput.FireHeld() || WWInput.FirePressed())) kid.TryFire(kid.AimDirection, WWInput.FirePressed());
             if (WWInput.Pressed(WWKey.Q)) kid.TryUseAbility(kid.AimDirection);
+            if (WWInput.Pressed(WWKey.X)) kid.TryUseUltimate(kid.AimDirection);
+            if (WWInput.Pressed(WWKey.F)) kid.ThrowBalloon(kid.AimDirection);
+            if (WWInput.Pressed(WWKey.V)) kid.TryHeroAction(kid.AimDirection);
+            if (def.ZoomFov <= 0f && WWInput.AimPressed()) kid.TryAltFire(kid.AimDirection);
 
             // ---- Drop the Big One for a teammate -------------------------------
             if (WWInput.Pressed(WWKey.G) && rm.Big.Carrier == kid && rm.Phase == Phase.Play)

@@ -19,7 +19,7 @@ namespace WaterWars
     public enum WWKey
     {
         W, A, S, D, Space, LeftCtrl, C, LeftShift, R, E, Q, G, B, Tab, Escape, Enter,
-        Alpha1, Alpha2, LeftBracket, RightBracket
+        Alpha1, Alpha2, LeftBracket, RightBracket, X, F, V
     }
 
     public static class WWInput
@@ -49,6 +49,9 @@ namespace WaterWars
                 case WWKey.Alpha1: return Key.Digit1;
                 case WWKey.Alpha2: return Key.Digit2;
                 case WWKey.LeftBracket: return Key.LeftBracket;
+                case WWKey.X: return Key.X;
+                case WWKey.F: return Key.F;
+                case WWKey.V: return Key.V;
                 default: return Key.RightBracket;
             }
         }
@@ -58,6 +61,7 @@ namespace WaterWars
         public static bool FireHeld() { return Mouse.current != null && Mouse.current.leftButton.isPressed; }
         public static bool FirePressed() { return Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame; }
         public static bool AimHeld() { return Mouse.current != null && Mouse.current.rightButton.isPressed; }
+        public static bool AimPressed() { return Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame; }
         // The new system reports mouse movement in pixels; scale it to feel like the old system.
         public static Vector2 MouseDelta() { return Mouse.current != null ? Mouse.current.delta.ReadValue() * 0.05f : Vector2.zero; }
 #else
@@ -85,6 +89,9 @@ namespace WaterWars
                 case WWKey.Alpha1: return KeyCode.Alpha1;
                 case WWKey.Alpha2: return KeyCode.Alpha2;
                 case WWKey.LeftBracket: return KeyCode.LeftBracket;
+                case WWKey.X: return KeyCode.X;
+                case WWKey.F: return KeyCode.F;
+                case WWKey.V: return KeyCode.V;
                 default: return KeyCode.RightBracket;
             }
         }
@@ -94,6 +101,7 @@ namespace WaterWars
         public static bool FireHeld() { return Input.GetMouseButton(0); }
         public static bool FirePressed() { return Input.GetMouseButtonDown(0); }
         public static bool AimHeld() { return Input.GetMouseButton(1); }
+        public static bool AimPressed() { return Input.GetMouseButtonDown(1); }
         public static Vector2 MouseDelta() { return new Vector2(Input.GetAxisRaw("Mouse X"), Input.GetAxisRaw("Mouse Y")); }
 #endif
     }

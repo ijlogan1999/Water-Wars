@@ -2,8 +2,8 @@
 // ---------------------------------------------------------------------------
 // The referee. It runs the Big Splash match from start to finish:
 //
-//   1. Pick your hero (placeholder heroes for now).
-//   2. Allowance phase (30 s): buy toys, towels and ability charges. Nobody
+//   1. Pick your hero. The bots take the other heroes (no two kids share one).
+//   2. Allowance phase (30 s): buy toys, towels, balloons and ability charges. Nobody
 //      can move yet. Press Enter to skip ahead.
 //   3. Play (1:40): attackers try to plant the Big One at site A or B.
 //      * Soak the whole other crew        -> you win the round.
@@ -12,6 +12,8 @@
 //      * Clock runs out with no plant      -> "the streetlights come on",
 //                                             everyone goes home, defenders win.
 //   4. Round over: hand out allowance, then the next round.
+//   Ultimate points: +1 per enemy you soak, +1 per round, +1 for planting or
+//   disarming.
 //   First crew to 7 rounds wins. Crews swap sides after round 6. At 6-6 the
 //   last round is sudden death with a fixed loadout.
 // ---------------------------------------------------------------------------
@@ -22,7 +24,7 @@ using UnityEngine;
 namespace WaterWars
 {
     public enum Phase { HeroSelect, Buy, Play, RoundOver, MatchOver }
-    public enum ShopItem { HandTowel, BeachTowel, Ability }
+    public enum ShopItem { HandTowel, BeachTowel, Balloon, Ability }
 
     public class RoundManager : MonoBehaviour
     {
@@ -100,10 +102,14 @@ namespace WaterWars
         /// Called by the hero picker on screen.
         public void StartMatch(HeroDef playerHero)
         {
-            Player.Hero = playerHero;
+            // Everyone gets a different hero: shuffle the rest and deal them out.
+            var pool = new List<HeroDef>(HeroDef.All);
+            pool.Remove(playerHero);
+            for (int i = pool.Count - 1; i > 0; i--) { int j = Random.Range(0, i + 1); var t = pool[i]; pool[i] = pool[j]; pool[j] = t; }
+            int next = 0;
             foreach (var k in Kids)
             {
-                if (k != Player) k.Hero = HeroDef.All[Random.Range(0, HeroDef.All.Length)];
+                k.SetHero(k == Player ? playerHero : pool[next++ % pool.Count]);
                 k.Money = Tuning.StartMoney;
                 k.StripGear();
                 survivedLastRound[k] = false;
@@ -119,6 +125,7 @@ namespace WaterWars
         // =====================================================================
         void StartRound()
         {
+            HeroWorld.Clear();   // throw away last round's fans, walls, traps and clouds
             if (Tuning.NewMapEachRound && Round > 1) Map = GameBootstrap.RegenerateMap();
             SuddenDeath = Round > Tuning.SwapSidesAfterRound * 2;
             Attackers = Round <= Tuning.SwapSidesAfterRound || SuddenDeath ? Team.Orange : Team.Teal;
@@ -284,6 +291,7 @@ namespace WaterWars
                 Planter = null;
                 PlantProgress = 0f;
                 foreach (var k in Kids) if (k.Team == Attackers) k.Money = Mathf.Min(Tuning.MaxMoney, k.Money + Tuning.PlantReward);
+                carrier.AddUltPoints(1);
                 AddFeed(carrier.DisplayName + " planted the Big One at " + site.Name + "!");
                 ShowBanner("The Big One is planted at " + site.Name + "!", 3f);
             }
@@ -311,6 +319,7 @@ namespace WaterWars
             {
                 Big.MarkDisarmed();
                 Disarmer = null;
+                who.AddUltPoints(1);
                 AddFeed(who.DisplayName + " disarmed the Big One");
                 EndRound(Defenders, who.DisplayName + " disarmed the Big One!");
             }
@@ -334,8 +343,9 @@ namespace WaterWars
             Vector3 where = victim.transform.position;
             victim.SendToCurb(curb[seat % curb.Count]);
 
-            if (attacker != null)
+            if (attacker != null && attacker.Team != victim.Team)
             {
+                attacker.AddUltPoints(1);
                 attacker.Money = Mathf.Min(Tuning.MaxMoney, attacker.Money + Tuning.SoakReward);
                 AddFeed(attacker.DisplayName + " soaked " + victim.DisplayName);
             }
@@ -364,6 +374,7 @@ namespace WaterWars
             {
                 int pay = k.Team == winner ? Tuning.WinMoney : lossPay;
                 k.Money = Mathf.Min(Tuning.MaxMoney, k.Money + pay);
+                k.AddUltPoints(1);
                 survivedLastRound[k] = k.Alive;
             }
 
@@ -405,6 +416,7 @@ namespace WaterWars
             {
                 case ShopItem.HandTowel: return "Hand Towel (absorbs " + Tuning.HandTowelAbsorb + ")";
                 case ShopItem.BeachTowel: return "Beach Towel (absorbs " + Tuning.BeachTowelAbsorb + ")";
+                case ShopItem.Balloon: return "Water Balloon [F]" + (kid.Kit != null && kid.Kit.HotSauce ? " (hot sauce)" : "");
                 default: return kid.Hero != null ? kid.Hero.AbilityName + " charge" : "Ability charge";
             }
         }
@@ -415,6 +427,7 @@ namespace WaterWars
             {
                 case ShopItem.HandTowel: return Tuning.HandTowelCost;
                 case ShopItem.BeachTowel: return Tuning.BeachTowelCost;
+                case ShopItem.Balloon: return Tuning.BalloonCost;
                 default: return kid.Hero != null ? kid.Hero.AbilityCost : 999;
             }
         }
@@ -433,6 +446,9 @@ namespace WaterWars
                 case ShopItem.BeachTowel:
                     if (kid.Towel >= Tuning.BeachTowelAbsorb) { why = "Towel already on"; return false; }
                     break;
+                case ShopItem.Balloon:
+                    if (kid.Balloons >= (kid.Kit != null ? kid.Kit.MaxBalloons : 1)) { why = "Can't carry more"; return false; }
+                    break;
                 case ShopItem.Ability:
                     if (kid.Hero == null || kid.AbilityCharges >= kid.Hero.AbilityMaxCharges) { why = "Charges full"; return false; }
                     break;
@@ -449,6 +465,7 @@ namespace WaterWars
             {
                 case ShopItem.HandTowel: kid.Towel = Tuning.HandTowelAbsorb; break;
                 case ShopItem.BeachTowel: kid.Towel = Tuning.BeachTowelAbsorb; break;
+                case ShopItem.Balloon: kid.Balloons++; break;
                 case ShopItem.Ability: kid.AbilityCharges++; break;
             }
             return true;
