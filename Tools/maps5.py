@@ -48,12 +48,34 @@ MAPS=[
          ("hedge",92.5,167,102.5,167,-1,0),("hedge",92.5,177,102.5,177,-1,0),        # planter box on the cul-de-sac island:
          ("hedge",92.5,167,92.5,177,-1,0),("hedge",102.5,167,102.5,177,-1,0),        #   mid becomes a ring you fight around
          ("fence",43.5,161,64,161,-1,0),("fence",131,161,151.5,161,-1,0),            # garden fences split the side lawns into two rooms
-         ("fence",43.5,172,69,172,8,3),("hedge",151.5,172,126,172,8,3),              # gates from the side lawns up into the site rooms
+         ("fence",43.5,172,82.5,172,8,3),("hedge",151.5,172,112.5,172,8,3),          # gates from the side lawns up into the site rooms
          ("hedge",52,217.5,77.3,192.2,14,3),("hedge",143,217.5,117.7,192.2,14,3),     # tall hedges wall the sites off from the defenders' lawn (one gate each)
          ("shed",53,200,0,4,4),("shed",137,186,0,4,4),                               # sheds inside each site room: something to plant behind
          ("shed",52,183,0,5,3),("shed",145,180,0,5,3),                               # more yard clutter so the site rooms aren't bare lawns
          ("shed",61,194,0,3,3),("shed",134,196,0,3,3),
-         ("truck",97.5,189,0)],                                                      # parked truck between the cul-de-sac and the defenders' lawn
+         ("truck",97.5,189,0),
+         # --- walled yards (25 Nov): tall fences join house to house, so each yard is a
+         #     room and its doors are the only ways in. Fences may run into a house. ---
+         ("fence",67.5,104,72,104,-1,0),("fence",127.5,104,123,104,-1,0),         # close the outer side yards: one side-yard corridor per house
+         ("fence",91.5,95.5,91.5,107.8,-1,0),("fence",103.5,95.5,103.5,107.8,-1,0), # front yards walled off from the stem road
+         ("fence",67.5,130.5,91.5,130.5,1.5,3),("fence",127.5,130.5,103.5,130.5,1.5,3),  # back fences: one door each, on the outside
+         ("fence",79,130.5,79,135.5,-1,0),("fence",116,130.5,116,135.5,-1,0),     # 100/114 Willow: the strip by the stem is a dead-end nook
+         ("fence",84,145,91.5,145,-1,0),("fence",111,145,103.5,145,-1,0),
+         ("fence",79,140,79,157,-1,0),("fence",116,140,116,157,-1,0),             # join 100 to 102 and 114 to 112
+         ("fence",43.5,150,78,150,24,3),("fence",151.5,150,117,150,24,3),          # tall fence + door into each side lawn (was see-over pickets)
+         ("fence",70.6,179.9,70.6,172,-1,0),("fence",122.4,183.6,122.4,172,-1,0), # site houses joined to the side-lawn fences
+         ("fence",70.6,179.9,86.9,182.6,8,3),("fence",122.4,183.6,108.1,182.6,6.5,3),  # "short" door from the cul-de-sac into each site
+         ("fence",86.9,182.6,85.6,196.7,-1,0),("fence",108.1,182.6,109.4,196.7,-1,0),
+         ("fence",77.3,192.2,85.6,196.7,-1,0),("fence",117.7,192.2,109.4,196.7,-1,0),  # site hedges joined to 106/108
+         # --- stuff in every room, so there are corners to hold inside them ---
+         ("shed",79,124,0,6,3),("shed",116,125,0,6,3),                            # Birch backyards: a shed each, splits the room in two
+         ("stand",73,116,90,4,2),("stand",122,116,90,4,2),                         # woodpile by the back door
+         ("shed",50,155,0,3,3),("shed",60,167,0,5,2.5),("shed",145,155,0,3,3),("shed",135,167,0,5,2.5),  # side lawns
+         ("car",87,163,80),("car",108,163,100),                       # parked cars around the cul-de-sac ring
+         ("shed",72,206,45,4,3),("shed",123,206,-45,4,3),                          # site rooms: one more box near the defender gate
+         ("stand",80,201,45,3,2),("stand",115,201,-45,3,2),
+         ("fence",43.5,195,52,195,-1,0),("fence",151.5,195,143,195,-1,0),         # a wall stub at the back of each site: a corner to wait behind
+         ("stand",64,214,0,4,2),("stand",131,214,0,4,2)],                                                      # parked truck between the cul-de-sac and the defenders' lawn
   note="Up the side yards of 166 & 168 Birch or straight up the Willow Ct stem, into the cul-de-sac."),
  dict(name="3. Schoolyard",
   area=U(L("Birch Ln",154),L("Birch Ln",156),L("Cedar Ln",122),L("Cedar Ln",124),road("Birch Ln",465,510),road("Cedar Ln",465,510),

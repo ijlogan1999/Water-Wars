@@ -8,6 +8,7 @@
 #   safe spot       exposed angle 120 or less: somewhere to hold an angle or wait.
 #   lanes           how many separate open wedges (gaps of 10+ degrees between them):
 #                   1-2 is a corner you can hold, 4+ means enemies come from all over.
+# Spots within 15 m of a spawn are left out of the numbers.
 # Run: python3 exposure.py [--draw]   (draws expo_mapN.png)
 import sys, numpy as np, shapely
 from shapely.geometry import Polygon
@@ -59,8 +60,12 @@ def expose(mp):
             lanes[k0+i] = n
     return P, deg, lanes
 
-def summary(mp):
+def summary(mp, skip_spawns=True):
     P, deg, lanes = expose(mp)
+    if skip_spawns:   # spawn rooms are meant to be safe from the enemy anyway
+        keep = np.ones(len(P), bool)
+        for sp in (mp['att'], mp['dfn']): keep &= np.hypot(P[:, 0]-sp[0], P[:, 1]-sp[1]) > 15
+        P, deg, lanes = P[keep], deg[keep], lanes[keep]
     return dict(n=len(P), median=float(np.median(deg)), safe=float((deg <= 120).mean()),
                 wide=float((deg >= 270).mean()), holdable=float(((lanes <= 2) & (deg <= 180)).mean()),
                 lanes=float(np.median(lanes)))
