@@ -40,7 +40,20 @@ MAPS=[
   att=(97.5,87),dfn=(97.5,208),A=(62,195,"104 Willow Ct garage"),B=(132,195,"110 Willow Ct treehouse"),mid=(97.5,172,"cul-de-sac"),
   cover=[("truck",97.5,120,70),                                                     # breaks the long view down the Willow Ct stem
          ("van",97.5,172,0),("tree",91,177,4),("tree",104,166,4),                   # broken-down van + trees on the cul-de-sac island: mid has corners
-         ("fence",103.5,108,103.5,130.5,11.3,2.5)],                                  # low picket -> tall fence (gate kept): right yard is its own lane
+         ("fence",103.5,108,103.5,130.5,11.3,2.5),                                   # low picket -> tall fence (gate kept): right yard is its own lane
+         # --- corridors and rooms (25 Nov) ---
+         ("hedge",67.5,95.5,80,95.5,-1,0),("hedge",85,95.5,91.5,95.5,-1,0),          # curb hedges along Birch Ln: three ways out of spawn
+         ("hedge",103.5,95.5,112,95.5,-1,0),("hedge",117,95.5,127.5,95.5,-1,0),
+         ("hedge",91.5,131,91.5,150,8,3),("hedge",103.5,131,103.5,150,8,3),          # the top of the stem is a corridor, with a side door each way
+         ("hedge",92.5,167,102.5,167,-1,0),("hedge",92.5,177,102.5,177,-1,0),        # planter box on the cul-de-sac island:
+         ("hedge",92.5,167,92.5,177,-1,0),("hedge",102.5,167,102.5,177,-1,0),        #   mid becomes a ring you fight around
+         ("fence",43.5,161,64,161,-1,0),("fence",131,161,151.5,161,-1,0),            # garden fences split the side lawns into two rooms
+         ("fence",43.5,172,69,172,8,3),("hedge",151.5,172,126,172,8,3),              # gates from the side lawns up into the site rooms
+         ("hedge",52,217.5,77.3,192.2,14,3),("hedge",143,217.5,117.7,192.2,14,3),     # tall hedges wall the sites off from the defenders' lawn (one gate each)
+         ("shed",53,200,0,4,4),("shed",137,186,0,4,4),                               # sheds inside each site room: something to plant behind
+         ("shed",52,183,0,5,3),("shed",145,180,0,5,3),                               # more yard clutter so the site rooms aren't bare lawns
+         ("shed",61,194,0,3,3),("shed",134,196,0,3,3),
+         ("truck",97.5,189,0)],                                                      # parked truck between the cul-de-sac and the defenders' lawn
   note="Up the side yards of 166 & 168 Birch or straight up the Willow Ct stem, into the cul-de-sac."),
  dict(name="3. Schoolyard",
   area=U(L("Birch Ln",154),L("Birch Ln",156),L("Cedar Ln",122),L("Cedar Ln",124),road("Birch Ln",465,510),road("Cedar Ln",465,510),
