@@ -47,5 +47,9 @@ is better: the genre keeps most fights under about 40 m). Low picket fences and
 cars count as see-over. `python3 walkcheck/spaces.py --draw` measures how much of
 each map is corridor (under 8 m wide), room (8-16 m) and open (over 16 m), and
 draws `space_mapN.png`. Targets: 30%+ corridor, about half room, 15% or less open,
-no open area over about 400 m2. `walkcheck/debug_plot.py N` draws map N with a 5 m grid,
+no open area over about 400 m2. `python3 walkcheck/exposure.py --draw` measures, for
+every spot, how many degrees around you an enemy within 40 m could shoot you from
+(draws `expo_mapN.png`). A spot of 120 degrees or less is a corner you can hold or
+wait in. A rooms-and-corridors test layout scores median about 140, 30% of spots
+safe and 0% open all round; aim for that. `walkcheck/debug_plot.py N` draws map N with a 5 m grid,
 fences, gates and house numbers, which helps when placing new props.
