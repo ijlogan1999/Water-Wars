@@ -44,5 +44,8 @@ the same props (`MapBuilder.BuildProps`).
 `python3 walkcheck/sightlines.py` prints the longest clear straight line on each
 map; `python3 walkcheck/count.py` counts the clear lines longer than 60 m (fewer
 is better: the genre keeps most fights under about 40 m). Low picket fences and
-cars count as see-over. `walkcheck/debug_plot.py N` draws map N with a 5 m grid,
+cars count as see-over. `python3 walkcheck/spaces.py --draw` measures how much of
+each map is corridor (under 8 m wide), room (8-16 m) and open (over 16 m), and
+draws `space_mapN.png`. Targets: 30%+ corridor, about half room, 15% or less open,
+no open area over about 400 m2. `walkcheck/debug_plot.py N` draws map N with a 5 m grid,
 fences, gates and house numbers, which helps when placing new props.
