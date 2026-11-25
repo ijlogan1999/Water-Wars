@@ -22,6 +22,12 @@
 //   Backyards are fenced. Side yards between houses lead into each backyard,
 //   and gates in the fences connect yards. Each way in is narrow.
 //
+// COVER (added after the Map Playbook review)
+//   Each map also adds its own props (MapDef.Props): parked cars and trucks
+//   that break up long streets, portable classrooms, sheds, a snack stand,
+//   party tents to plant under, and new tall fences or hedges with gates that
+//   split open areas into lanes. See BuildProps.
+//
 // Positions: the drawings use x = east, y = north. In Unity that's x and z.
 // ---------------------------------------------------------------------------
 
@@ -173,6 +179,9 @@ namespace WaterWars
             BuildEdges(root, def);
             foreach (var rb in def.Roadblocks) BuildRoadblock(root, rb);
 
+            // ---- This map's extra cover (cars, portables, tents, new fences...) ---
+            BuildProps(root, def);
+
             Physics.SyncTransforms();
 
             // ---- Sites -------------------------------------------------------------
@@ -264,6 +273,13 @@ namespace WaterWars
                 var c = new Vector2(g[i], g[i + 1]);
                 var d = new Vector2(g[i + 2], g[i + 3]);
                 spots.Add(c); spots.Add(c + d * 1.3f); spots.Add(c - d * 1.3f);
+            }
+            // Gates in this map's own new fences and hedges.
+            foreach (var p in def.Props)
+            {
+                if (p.What != Prop.Kind.Fence && p.What != Prop.Kind.Hedge) continue;
+                if (!PropGate(p, out var gc, out var gw)) continue;
+                spots.Add(gc); spots.Add(gc + gw * 1.3f); spots.Add(gc - gw * 1.3f);
             }
             foreach (int id in def.LotIds)
             {
@@ -678,6 +694,127 @@ namespace WaterWars
                 Vector2 at = a + d * ((i + 0.5f) / n);
                 Car(parent, at, d, CarColors[(i * 7 + (int)a.x) % CarColors.Length]);
             }
+        }
+
+        // =====================================================================
+        // A map's extra cover (see Prop in NeighborhoodTypes.cs). The sizes
+        // here must match Tools/props.py, which the walkability check uses.
+        // =====================================================================
+        static readonly Color PortableTan = new Color(0.86f, 0.75f, 0.55f);
+        static readonly Color ShedGreen = new Color(0.55f, 0.6f, 0.5f);
+        static readonly Color StandOrange = new Color(0.95f, 0.6f, 0.25f);
+        static readonly Color TentPink = new Color(1f, 0.55f, 0.7f);
+
+        static Vector2 Dir(float degrees)
+        {
+            float r = degrees * Mathf.Deg2Rad;
+            return new Vector2(Mathf.Cos(r), Mathf.Sin(r));
+        }
+
+        /// Where a Fence/Hedge prop's gate is, and the direction you walk through it.
+        static bool PropGate(Prop p, out Vector2 center, out Vector2 walk)
+        {
+            var v = p.V;
+            Vector2 a = new Vector2(v[0], v[1]), b = new Vector2(v[2], v[3]);
+            Vector2 d = (b - a).normalized;
+            center = a + d * (v[4] + v[5] * 0.5f);
+            walk = new Vector2(-d.y, d.x);
+            return v[4] >= 0f;
+        }
+
+        static void BuildProps(Transform root, MapDef def)
+        {
+            if (def.Props == null) return;
+            var parent = Pivot(root, "Map Cover");
+            int n = 0;
+            foreach (var p in def.Props)
+            {
+                var v = p.V;
+                n++;
+                switch (p.What)
+                {
+                    case Prop.Kind.Car:
+                        Car(parent, new Vector2(v[0], v[1]), Dir(v[2]), CarColors[n % CarColors.Length]);
+                        break;
+                    case Prop.Kind.Van:
+                    {
+                        var van = Pivot(parent, "Van");
+                        var paint = new Color(0.9f, 0.88f, 0.8f);
+                        Shapes.BoxOnGround("Van Body", Vector3.zero, new Vector3(2.2f, 2.4f, 5.2f), paint, van);
+                        Shapes.Box("Van Stripe", new Vector3(0f, 1.3f, 0f), new Vector3(2.25f, 0.3f, 5.25f), new Color(0.2f, 0.45f, 0.75f), van, false);
+                        Place(van, new Vector2(v[0], v[1]), Dir(v[2]));
+                        break;
+                    }
+                    case Prop.Kind.Truck:
+                        Truck(parent, new Vector2(v[0], v[1]) + Dir(v[2]) * 0.15f, Dir(v[2]), CarColors[n % CarColors.Length], new Color(0.92f, 0.9f, 0.85f), 3.4f);
+                        break;
+                    case Prop.Kind.Portable:
+                    {
+                        // A portable classroom: a big box with a little porch and steps.
+                        BoxProp(parent, "Portable Classroom", v, 3.2f, PortableTan, 0.4f, Roof, true);
+                        break;
+                    }
+                    case Prop.Kind.Shed:
+                        BoxProp(parent, "Shed", v, 2.4f, ShedGreen);
+                        break;
+                    case Prop.Kind.Stand:
+                    {
+                        // A snack stand: solid counter with an awning on top.
+                        BoxProp(parent, "Snack Stand", v, 2.4f, StandOrange, 1.2f, PicketWhite, false);
+                        break;
+                    }
+                    case Prop.Kind.Tent:
+                    {
+                        // A party tent: a roof on four poles. Arcing water can't reach under it.
+                        var t = Pivot(parent, "Party Tent");
+                        float hw = v[3] * 0.5f - 0.2f, hd = v[4] * 0.5f - 0.2f;
+                        for (int sx = -1; sx <= 1; sx += 2)
+                            for (int sz = -1; sz <= 1; sz += 2)
+                                Shapes.BoxOnGround("Tent Pole", new Vector3(sx * hw, 0f, sz * hd), new Vector3(0.2f, 2.7f, 0.2f), PicketWhite, t);
+                        Shapes.Box("Tent Roof", new Vector3(0f, 2.8f, 0f), new Vector3(v[3], 0.2f, v[4]), TentPink, t);
+                        t.position = W(new Vector2(v[0], v[1]));
+                        t.rotation = Facing(new Vector2(-Mathf.Sin(v[2] * Mathf.Deg2Rad), Mathf.Cos(v[2] * Mathf.Deg2Rad)));
+                        break;
+                    }
+                    case Prop.Kind.Fence:
+                    case Prop.Kind.Hedge:
+                    {
+                        bool hedge = p.What == Prop.Kind.Hedge;
+                        Vector2 a = new Vector2(v[0], v[1]), b = new Vector2(v[2], v[3]);
+                        Vector2 d = (b - a).normalized;
+                        float len = Vector2.Distance(a, b);
+                        var pieces = new List<Vector2[]>();
+                        if (v[4] < 0f) pieces.Add(new[] { a, b });
+                        else
+                        {
+                            if (v[4] > 0.05f) pieces.Add(new[] { a, a + d * v[4] });
+                            float e = v[4] + v[5];
+                            if (e < len - 0.05f) pieces.Add(new[] { a + d * e, b });
+                        }
+                        foreach (var pc in pieces)
+                            Wall(parent, hedge ? "Tall Hedge" : "Tall Fence", pc[0], pc[1], 2.2f, hedge ? 0.9f : 0.2f, hedge ? HedgeGreen : FenceWood);
+                        break;
+                    }
+                    case Prop.Kind.Tree:
+                        Tree(parent, new Vector2(v[0], v[1]), v[2]);
+                        break;
+                }
+            }
+        }
+
+        /// A solid box prop: x, y, angle, width, depth. Width runs east-west at angle 0.
+        /// roofOverhang >= 0 adds a flat roof that sticks out that far on every side.
+        static Transform BoxProp(Transform parent, string name, float[] v, float height, Color c,
+            float roofOverhang = -1f, Color roofColor = default(Color), bool roofSolid = true)
+        {
+            var t = Pivot(parent, name);
+            Shapes.BoxOnGround(name + " Body", Vector3.zero, new Vector3(v[3], height, v[4]), c, t);
+            if (roofOverhang >= 0f)
+                Shapes.Box(name + " Roof", new Vector3(0f, height + 0.1f, 0f),
+                    new Vector3(v[3] + roofOverhang * 2f, 0.2f, v[4] + roofOverhang * 2f), roofColor, t, roofSolid);
+            t.position = W(new Vector2(v[0], v[1]));
+            t.rotation = Facing(new Vector2(-Mathf.Sin(v[2] * Mathf.Deg2Rad), Mathf.Cos(v[2] * Mathf.Deg2Rad)));
+            return t;
         }
 
         // =====================================================================

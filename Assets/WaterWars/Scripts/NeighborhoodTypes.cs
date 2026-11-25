@@ -102,6 +102,24 @@ namespace WaterWars
         public Edge(float[] a, float[] b, Kind what) { A = LotRec.V(a); B = LotRec.V(b); What = what; }
     }
 
+    /// Extra cover a map adds on top of the neighborhood: parked cars, vans,
+    /// portable classrooms, sheds, a snack stand, party tents, new fences and
+    /// hedges, trees. Added after the Map Playbook review (tactical shooter
+    /// lessons): they break up long sightlines and split open areas into lanes.
+    /// The numbers mean (sizes in meters, angles in degrees, 0 = pointing east):
+    ///   Car, Van, Truck:               x, y, angle (the way the long side points)
+    ///   Portable, Shed, Stand, Tent:   x, y, angle, width, depth
+    ///   Fence, Hedge:                  x1, y1, x2, y2, gateAt, gateWidth
+    ///                                  (a gap gateWidth wide, gateAt meters from the first end; gateAt below 0 = no gate)
+    ///   Tree:                          x, y, radius
+    public class Prop
+    {
+        public enum Kind { Car, Van, Truck, Portable, Shed, Stand, Tent, Fence, Hedge, Tree }
+        public readonly Kind What;
+        public readonly float[] V;
+        public Prop(Kind what, float[] v) { What = what; V = v; }
+    }
+
     /// One map: a piece of the neighborhood with spawns, two sites and closed-off edges.
     public class MapDef
     {
@@ -111,15 +129,16 @@ namespace WaterWars
         public readonly SiteDef[] Sites;
         public readonly Roadblock[] Roadblocks;
         public readonly Edge[] Edges;
+        public readonly Prop[] Props;      // extra cover just for this map
         public readonly int[] LotIds, FenceIds;  // what to build (the map plus a ring of scenery around it)
 
         public MapDef(string name, string note, string attackerStreet, float[] area, float[] attackers, float[] defenders,
-            SiteDef[] sites, Roadblock[] roadblocks, Edge[] edges, int[] lots, int[] fences)
+            SiteDef[] sites, Roadblock[] roadblocks, Edge[] edges, Prop[] props, int[] lots, int[] fences)
         {
             Name = name; Note = note; AttackerStreet = attackerStreet;
             Area = LotRec.Pts(area);
             Attackers = LotRec.V(attackers); Defenders = LotRec.V(defenders);
-            Sites = sites; Roadblocks = roadblocks; Edges = edges; LotIds = lots; FenceIds = fences;
+            Sites = sites; Roadblocks = roadblocks; Edges = edges; Props = props; LotIds = lots; FenceIds = fences;
         }
 
         /// True when a point (seen from above) is inside the play area.

@@ -24,3 +24,25 @@ attacker spawn to both sites and the defender spawn. It prints the result and
 draws `walkcheck/walk_mapN.png` (green = reachable). Run it after changing the
 neighborhood or a map. `export_cs.py` keeps every side yard at least
 `SIDE_YARD` (3 m) wide so the lanes stay walkable.
+
+Add `--times` to also print walking distances and times (at the game's run
+speed of 5.5 m/s) between the spawns and the sites, marked against the Map
+Playbook's targets: attackers 20-25 s to a site, defenders 5-10 s, defenders
+10-15 s from site to site.
+
+## Map cover (props)
+
+Each map in `maps5.py` has a `cover=[...]` list: parked cars, vans, trucks,
+portable classrooms, sheds, a snack stand, party tents, extra tall fences and
+hedges (with or without a gate), and trees. `props.py` explains the numbers.
+A new fence or hedge replaces any old neighborhood fence lying on the same line,
+so you can turn a low picket fence into a tall one or add a gate. The game builds
+the same props (`MapBuilder.BuildProps`).
+
+## Checking sightlines
+
+`python3 walkcheck/sightlines.py` prints the longest clear straight line on each
+map; `python3 walkcheck/count.py` counts the clear lines longer than 60 m (fewer
+is better: the genre keeps most fights under about 40 m). Low picket fences and
+cars count as see-over. `walkcheck/debug_plot.py N` draws map N with a 5 m grid,
+fences, gates and house numbers, which helps when placing new props.

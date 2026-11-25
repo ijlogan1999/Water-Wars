@@ -9,7 +9,10 @@ import numpy as np
 from shapely.geometry import Polygon, Point, LineString, box
 from shapely.ops import unary_union
 from shapely import affinity
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from parse import lots, fences, gates, parktrees, maps
+import props as PROPS
 R=0.45  # CharacterController radius + skin
 def rect(cx,cy,ax,ay,hx,hz):
     # ax,ay = local +Z (forward) direction; local +X = (ay,-ax)
@@ -132,6 +135,13 @@ def build(mp, near, tweak=None):
         obs.append(box(525.5,213.8,528.5,216.2))
         x0_,x1_,y0_,y1_=398.5,576.5,182.5,252.5
         for a,b in [((x0_,y0_),(462,y0_)),((513,y0_),(x1_,y0_)),((x0_,y1_),(x1_,y1_)),((x0_,y0_),(x0_,y1_)),((x1_,y0_),(x1_,y1_))]: wall(obs,a,b,0.08)
+    # roadblocks (a truck or cars across the street where it leaves the map)
+    for kind,at,out in mp.get('rbs',[]):
+        at=np.array(at); out=np.array(out); across=np.array([-out[1],out[0]])
+        c=at+out*3.5; obs.append(PROPS._rect(c[0],c[1],across[0],across[1],8,2.5))
+    # this map's extra cover (cars, portables, tents, new fences...)
+    for p in mp.get('props', []):
+        obs.extend(PROPS.footprint(p))
     return area, unary_union(obs)
 
 def check(mp, tweak=None, verbose=True, draw=None):
@@ -167,6 +177,52 @@ def check(mp, tweak=None, verbose=True, draw=None):
         ax.set_xlim(bx[0]-3,bx[2]+3); ax.set_ylim(bx[1]-3,bx[3]+3); ax.set_aspect('equal'); ax.set_title(mp['name']+'  green = reachable from attacker spawn')
         fig.savefig(draw,dpi=110,bbox_inches='tight'); plt.close(fig)
     return res
+RUN=5.5   # Tuning.RunSpeed, meters per second
+def walk_times(mp, step=0.5):
+    """Shortest walking distances (meters) between spawns and sites, on a 0.5 m grid."""
+    import heapq, shapely
+    area=Polygon(np.array(mp['area']).reshape(-1,2)); bx=area.bounds
+    near=box(bx[0]-60,bx[1]-60,bx[2]+60,bx[3]+60)
+    area,obst=build(mp,near)
+    free=area.difference(obst.buffer(R,quad_segs=4))
+    xs=np.arange(bx[0],bx[2],step); ys=np.arange(bx[1],bx[3],step)
+    X,Y=np.meshgrid(xs,ys); ok=shapely.contains_xy(free,X,Y)
+    H,W=ok.shape
+    def cell(p):
+        j=int(round((p[0]-bx[0])/step)); i=int(round((p[1]-bx[1])/step))
+        best=None;bd=1e9
+        for di in range(-12,13):
+            for dj in range(-12,13):
+                a,b=i+di,j+dj
+                if 0<=a<H and 0<=b<W and ok[a,b] and di*di+dj*dj<bd: bd=di*di+dj*dj;best=(a,b)
+        return best
+    def dijkstra(src):
+        D=np.full(ok.shape,np.inf); D[src]=0; q=[(0.0,src)]
+        nb=[(-1,0,1),(1,0,1),(0,-1,1),(0,1,1),(-1,-1,1.4142),(-1,1,1.4142),(1,-1,1.4142),(1,1,1.4142)]
+        while q:
+            d,(i,j)=heapq.heappop(q)
+            if d>D[i,j]: continue
+            for di,dj,w in nb:
+                a,b=i+di,j+dj
+                if 0<=a<H and 0<=b<W and ok[a,b]:
+                    nd=d+w*step
+                    if nd<D[a,b]: D[a,b]=nd; heapq.heappush(q,(nd,(a,b)))
+        return D
+    pts={'att':mp['att'],'dfn':mp['dfn'],'A':mp['sites'][0][3],'B':mp['sites'][1][3]}
+    cells={k:cell(v) for k,v in pts.items()}
+    out={}
+    for src in ('att','dfn','A'):
+        D=dijkstra(cells[src])
+        for dst in ('A','B') if src!='A' else ('B',):
+            out[src+'>'+dst]=float(D[cells[dst]])
+    return out
+TARGET={'att':(110,140),'dfn':(30,55),'A>B':(55,80)}
+def verdict(k,v):
+    lo,hi=TARGET['A>B' if k=='A>B' else k.split('>')[0]]
+    return 'ok' if lo-5<=v<=hi+10 else ('short' if v<lo else 'long')
 if __name__=='__main__':
     for i,mp in enumerate(maps):
         print(mp['name'], check(mp, draw='walk_map%d.png'%(i+1)))
+        if '--times' in sys.argv:
+            t=walk_times(mp)
+            print('   walking:', ', '.join('%s %.0f m (%.0f s, %s)'%(k,v,v/RUN,verdict(k,v)) for k,v in t.items()))
