@@ -20,12 +20,13 @@
 #              house, so give neighbours different letters.
 #     h i j k  one-storey house (5.7 m)
 #     G  garage with its door shut (4.2 m)      S  shed (3.2 m)
-#     X  hedge, a full 2 m thick (4.2 m)        T  trees and brush (4.8 m)
+#     X  hedge, a full 2 m thick (4.2 m)        T  trees and brush (6 m)
 #     - | +  board fence (3 m) down the middle of the square: - runs east-west,
 #            | runs north-south, + is a corner or a T
 #     o  crates, 1.3 m: you can shoot over them      w  above-ground pool, 1.2 m: the same
 #     V  a parked vehicle: 2 in a row is a car (you can see over it), 3 a van,
 #        4 a box truck, 5 a motorhome
+#     ~  water (a pond, a creek): nobody walks in, but you see and shoot across it
 #     _  a closed yard: grass and a tree nobody can get to. It must be walled in.
 #
 # compile(bp) checks the drawing (the outside ring is solid, every square of floor can be
@@ -43,7 +44,7 @@ GROUND = {'.': None, ',': 0, ':': 1, ';': 2, 's': 3}  # paint number, None = gra
 MARKS = {'1': 'att', '2': 'dfn', 'A': 'A', 'B': 'B'}
 RAMP = {'>': 0, '^': 90, '<': 180, 'v': 270}
 HOUSES = {**{c: 8.8 for c in 'HIJK'}, **{c: 5.7 for c in 'hijk'}}
-BOXES = {'G': 'lockup', 'S': 'shed', 'X': 'bush', 'T': 'thicket', 'o': 'crate', '_': 'yard', 'w': 'pool'}
+BOXES = {'G': 'lockup', 'S': 'shed', 'X': 'bush', 'T': 'thicket', 'o': 'crate', '_': 'yard', 'w': 'pool', '~': 'water'}
 FENCE = '-|+'
 VEHICLES = {2: 'car', 3: 'van', 4: 'truck', 5: 'rv'}
 WALK = set(GROUND) | set(MARKS) | set(RAMP) | {'g', 'p'}
@@ -231,7 +232,7 @@ def compile(bp, origin=(0.0, 0.0)):
 # ---------------------------------------------------------------------------------------
 # A picture of the drawing
 # ---------------------------------------------------------------------------------------
-COLORS = {'.': '#9fce7a', ',': '#d9d5cc', ':': '#77777c', ';': '#c9a777', 's': '#ead9a0', 'g': '#f1ede4', '_': '#b9dc9a', 'w': '#69bdf0',
+COLORS = {'.': '#9fce7a', ',': '#d9d5cc', ':': '#77777c', ';': '#c9a777', 's': '#ead9a0', 'g': '#f1ede4', '_': '#b9dc9a', 'w': '#69bdf0', '~': '#3f86c9',
           'G': '#8d8d8a', 'S': '#6f8266', 'X': '#2f6b2a', 'T': '#1f4f1c', 'o': '#b08556', 'V': '#3b5f9c',
           '-': '#7a5230', '|': '#7a5230', '+': '#7a5230'}
 COLORS.update({c: '#b5654b' for c in 'HIJK'}); COLORS.update({c: '#d9a28c' for c in 'hijk'})
@@ -248,14 +249,14 @@ def draw(bp, path, mp=None):
     for p in mp['props']:
         if p[0] == 'paint': ax.add_patch(Rectangle((p[1] - p[3] / 2, p[2] - p[4] / 2), p[3], p[4], fc=[COLORS[','], COLORS[':'], COLORS[';'], COLORS['s']][int(p[5])], ec='none'))
     shade = {'house': None, 'lockup': COLORS['G'], 'shed': COLORS['S'], 'bush': COLORS['X'], 'thicket': COLORS['T'], 'crate': COLORS['o'],
-             'yard': COLORS['_'], 'pool': COLORS['w'], 'fence': COLORS['-'], 'hedge': COLORS['X'], 'garage': '#55555a', 'treehouse': '#7a5230',
+             'yard': COLORS['_'], 'pool': COLORS['w'], 'water': COLORS['~'], 'fence': COLORS['-'], 'hedge': COLORS['X'], 'garage': '#55555a', 'treehouse': '#7a5230',
              'car': '#6f8fd0', 'van': COLORS['V'], 'truck': COLORS['V'], 'rv': COLORS['V'], 'stand': '#e67e22', 'tent': '#ff6fa8',
              'portable': '#d9b26f', 'townhome': '#b5838d', 'tree': '#2e7d32'}
     for p in mp['props']:
         if p[0] == 'paint': continue
         col = shade.get(p[0]) or ('#b5654b' if p[6] > 7 else '#d9a28c')
         for g in PROPS.footprint(p):
-            ax.add_patch(MPoly(list(g.exterior.coords), fc=col, ec='#222' if p[0] not in ('yard',) else 'none', lw=0.4))
+            ax.add_patch(MPoly(list(g.exterior.coords), fc=col, ec='#222' if p[0] not in ('yard', 'water') else 'none', lw=0.4))
         if p[0] == 'tent':
             ax.add_patch(Rectangle((p[1] - p[4] / 2, p[2] - p[5] / 2), p[4], p[5], fc='#ff6fa8', ec='#222', lw=0.5, alpha=.45, hatch='//'))
         if p[0] == 'treehouse':
@@ -274,7 +275,8 @@ def draw(bp, path, mp=None):
     key = [('two-storey house', '#b5654b'), ('one-storey house', '#d9a28c'), ('shut garage', COLORS['G']), ('hedge', COLORS['X']),
            ('trees', COLORS['T']), ('board fence', COLORS['-']), ('shed', COLORS['S']), ('crates (shoot over)', COLORS['o']),
            ('truck or van', COLORS['V']), ('car (see over)', '#6f8fd0'), ('closed yard', COLORS['_']), ('street', COLORS[':']),
-           ('pavement', COLORS[',']), ('dirt', COLORS[';']), ('pool (see over)', COLORS['w']), ('tent roof', '#ff9cc4')]
+           ('pavement', COLORS[',']), ('dirt', COLORS[';']), ('pool (see over)', COLORS['w']), ('tent roof', '#ff9cc4'),
+           ('water (see across)', COLORS['~']), ('sand', COLORS['s'])]
     ax.legend(handles=[Patch(fc=c, ec='#444', lw=0.4, label=t) for t, c in key], loc='upper center', bbox_to_anchor=(0.5, -0.03),
               ncol=7, fontsize=6.5, frameon=False, handlelength=1.2, columnspacing=1.0)
     fig.tight_layout(); fig.savefig(path, dpi=110); plt.close(fig)

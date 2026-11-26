@@ -122,10 +122,11 @@ namespace WaterWars
     ///   Garage:                        x, y, angle the big door faces, backDoor (1 = yes). You CAN go in.
     ///   Treehouse:                     x, y, angle the ramp runs out toward
     ///   Paint:                         x, y, width, depth, what (0 pavement, 1 asphalt, 2 dirt, 3 sand): flat ground color
+    ///   Water:                         x, y, angle, width, depth (a pond or creek: you see and shoot across it, nobody walks in)
     public class Prop
     {
         public enum Kind { Car, Van, Truck, Portable, Shed, Stand, Tent, Fence, Hedge, Tree, Townhome, RV,
-                           House, Lockup, Bush, Thicket, Crate, Yard, Garage, Treehouse, Paint, Pool }
+                           House, Lockup, Bush, Thicket, Crate, Yard, Garage, Treehouse, Paint, Pool, Water }
         public readonly Kind What;
         public readonly float[] V;
         public Prop(Kind what, float[] v) { What = what; V = v; }

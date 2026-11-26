@@ -276,6 +276,7 @@ namespace WaterWars
 
         // ---- Blueprint maps (must match Tools/blueprint.py and Tools/props.py) ----
         const float BlueprintCell = 2f;          // one letter of the drawing is this many meters
+        const float ThicketHeight = 6f;          // trees and brush on a drawn map: taller than a hedge, so woods feel like woods
         const float BlueprintGarageWidth = 6f, BlueprintGarageDepth = 8f, BlueprintGarageDoor = 4f;
 
         /// What you see past the edge of a blueprint map: a ring of houses and trees,
@@ -805,6 +806,7 @@ namespace WaterWars
         static readonly Color ShedGreen = new Color(0.55f, 0.6f, 0.5f);
         static readonly Color StandOrange = new Color(0.95f, 0.6f, 0.25f);
         static readonly Color TentPink = new Color(1f, 0.55f, 0.7f);
+        static readonly Color WaterBlue = new Color(0.3f, 0.55f, 0.8f);
 
         static Vector2 Dir(float degrees)
         {
@@ -858,7 +860,7 @@ namespace WaterWars
                     case Prop.Kind.Thicket:
                     {
                         // A clump of trees with brush so thick you can't push through or see through.
-                        var t = BoxProp(parent, "Thicket", v, TreeLineHeight, HedgeGreen * 0.85f);
+                        var t = BoxProp(parent, "Thicket", v, ThicketHeight, HedgeGreen * 0.85f);
                         int across = Mathf.Max(1, Mathf.RoundToInt(v[3] / 5f)), deep = Mathf.Max(1, Mathf.RoundToInt(v[4] / 5f));
                         for (int i = 0; i < across; i++)
                             for (int j = 0; j < deep; j++)
@@ -875,6 +877,16 @@ namespace WaterWars
                     case Prop.Kind.Pool:
                         BoxProp(parent, "Above-Ground Pool", v, 1.2f, new Color(0.4f, 0.75f, 0.95f));
                         break;
+                    case Prop.Kind.Water:
+                    {
+                        // A pond or a creek. You see across it and water flies across it, but nobody
+                        // wades in: its edge is an invisible wall on the layer shots ignore.
+                        FlatRect(parent, "Water", Rect.MinMaxRect(v[0] - v[3] * 0.5f, v[1] - v[4] * 0.5f, v[0] + v[3] * 0.5f, v[1] + v[4] * 0.5f), WaterBlue, 0.03f);
+                        var edge = BoxProp(parent, "Water Edge", v, 3f, WaterBlue);
+                        Object.DestroyImmediate(edge.GetComponentInChildren<Renderer>());
+                        foreach (var c in edge.GetComponentsInChildren<Collider>()) c.gameObject.layer = Shapes.WaterLayer;
+                        break;
+                    }
                     case Prop.Kind.Yard:
                     {
                         // Somebody's fenced-off back yard: you can see the tree in it, but

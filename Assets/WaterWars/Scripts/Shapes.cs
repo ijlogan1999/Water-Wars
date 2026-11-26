@@ -18,8 +18,16 @@ namespace WaterWars
         // head/body/legs zones inside instead.
         public const int IgnoreRaycastLayer = 2;
 
-        /// Layers that water and line-of-sight checks can hit (everything except Ignore Raycast).
-        public static int ShotMask { get { return ~(1 << IgnoreRaycastLayer); } }
+        // Unity's "Water" layer is built in too (number 4). A pond or creek on a map is an
+        // invisible wall on this layer: kids cannot wade in, but shots and eyes go across.
+        public const int WaterLayer = 4;
+
+        /// Layers that water shots and line-of-sight checks can hit (everything except
+        /// Ignore Raycast and the ponds' invisible edges).
+        public static int ShotMask { get { return ~((1 << IgnoreRaycastLayer) | (1 << WaterLayer)); } }
+
+        /// Layers a walking kid bumps into (everything except other kids' movement capsules).
+        public static int WalkMask { get { return ~(1 << IgnoreRaycastLayer); } }
 
         static Material baseMaterial;
         static readonly Dictionary<Color, Material> cache = new Dictionary<Color, Material>();

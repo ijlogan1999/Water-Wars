@@ -9,6 +9,7 @@
 #   H I J K  two-storey houses    h i j k  one-storey houses    G  shut garage    S  shed
 #   X  hedge    T  trees    - | +  board fence    o  crates (shoot over)    V  vehicle
 #   w  above-ground pool (shoot over)    p  floor under a party tent    s  sand
+#   ~  water: nobody walks in, but you see and shoot across it
 #   _  a closed yard nobody can get into
 #
 # The number after each row is only a label (row 00 is the north edge), so a row is easy
@@ -202,6 +203,67 @@ X_X,,,,,,,,,,,,,,,,TT,,,,,,,TT,,,,,,,,,,,,,,,,,jjjjjjX  50
 X_XXXiiiiiiiiJJJJJJJJhhhhhhhhKKKKKKKKjjjjjjjjIIIIIIIIX  51
 X____iiiiiiiiJJJJJJJJhhhhhhhhKKKKKKKKjjjjjjjjIIIIIIIIX  52
 XXXXXiiiiiiiiJJJJJJJJhhhhhhhhKKKKKKKKjjjjjjjjIIIIIIIIX  53
+""",
+      extra=[]),
+ dict(name="Park Run", start="the parking lot",
+      A="the picnic pavilion", B="home plate on the ball field",
+      note="From the parking lot, paths run round both sides of the park through clearings in the trees. "
+           "The pond is the middle: you can see and shoot across the water, but you have to go round it.",
+      #           11111111112222222222333333333344444444445555
+      # 012345678901234567890123456789012345678901234567890123
+      grid="""
+TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT  00
+TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT  01
+TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT  02
+TTTT;;;;;.........oo.TTTT......TTT.......TTTTTTTTTTTTT  03
+TTTT;;;;;............TTT........T.........TT......TTTT  04
+TTTT;;TTT....pppp....;;;....TT..;.........T........TTT  05
+TTTT;;TTT....pppp....;;;....TT..;......TT.T..T.....TTT  06
+TTTT;;TTTTT..pppp....;;;....TT..T......TT.T..T.....TTT  07
+TTTT;;TTTTT..A.......TTT........T..T......T.....TT.TTT  08
+TTTT;;TTT..........SSTTT..T.....T..T......;.....TT.TTT  09
+TTTT;;;;T..........SSTTT..T.....T.........;........TTT  10
+TTTT;;;;T.oo.........TTTT......TTT.......TT........TTT  11
+TTTTTT;;TTTTTTTT;;TTTTTTTTTTTTTTTTTTTTT;;TTT......TTTT  12
+TTTTTT;;TTTT.......TTTTTTTTTTTTTTTTTTTT;;TTTTTTT;;TTTT  13
+TTTTTT;;TTTT.......TTTTTTTTTTTTTTTTTTTT;;TTTTTTT;;TTTT  14
+TTTTTT;;TTTT..oo...TTTTTTTTTTTTTTTTTTTT;;TTTTTTT;;TTTT  15
+TTTTTT;;TTTT.......TTTTTTTTTTTTTTTTTTTT;;TTTTTTT;;TTTT  16
+TTTTTT;;TTTT.......TTTTTTTTTTTTTTTTTTTT;;TTT::::::::TT  17
+TTTTTT;;TTTTTTTT;;TT...TT...........TTT;;TTT::::::::TT  18
+TTTTTT;;TTTTT.....T........TT.......TT....TT::::V:::TT  19
+TTT.......TT...............TT.......T......T:VV:V:::TT  20
+TTT.....ooTT.......T............oo..T.T....T::::V:::TT  21
+TTT.......TT..TTTTTT...~~~~~~~~~~...T.T....T::::V:::TT  22
+TTT.......TT..TTTTTT...~~~~~~~~~~...T......T::::::VVTT  23
+TTT.......TT.......T...~~~TTTT~~~...,......T::::::::TT  24
+TTT...SS..;;.o.....T...~~~TTTT~~~...,..SS..,::::::::TT  25
+TTT...SS2.;;.......T...~~~TTTT~~~...,..SS..,::::::1:TT  26
+TTT.......TT.......T...~~~TTTT~~~...,......T::::::::TT  27
+TTT.......TTTTTTT..T...~~~~~~~~~~...T......TVVVV::::TT  28
+TTT.......TTTTTTT..T...~~~~~~~~~~...T....T.T:::::V::TT  29
+TTT.oo....TT.......T............oo..T....T.T:::::V::TT  30
+TTT.......TT...o...........TT.......T......T:::::V::TT  31
+TTTTTT;;TTTTT.....T........TT.......TT....TT:VV:::::TT  32
+TTTTTT;;TTTTT;;TTTTT...TT...........TTT;;TTT::::::::TT  33
+TTTTTT;;TTTT.......TTTTTTTTTTTTTTTTTTTT;;TTT::::::::TT  34
+TTTTTT;;TTTT.......TTTTTTTTTTTTTTTTTTTT;;TTTT;;TTTTTTT  35
+TTTTTT;;TTTT..oo...TTTTTTTTTTTTTTTTTTTT;;TTTT;;TTTTTTT  36
+TTTTTT;;TTTT.......TTTTTTTTTTTTTTTTTTTT;;TTTT;;TTTTTTT  37
+TTTTTT;;TTTT.......TTTTTTTTTTTTTTTTTTTT;;TTTT;;TTTTTTT  38
+TTTTTT;;TTTTTTTT;;TTTTTTTTTTTTTTTTTTTTT;;TTT......TTTT  39
+TTTT;;;;T............TTTT......TTT.......TT........TTT  40
+TTTT;;;;T....ooo.....TTT..T.....T.........;........TTT  41
+TTTT;;TTT..;;;;;;;;o.TTT..T.....T..T......;..TT....TTT  42
+TTTT;;TTT..|;;;;;;;o.TTT........T..T......T..TT....TTT  43
+TTTT;;TTT..|;B;;;;;..;;;....TT..T......TT.T.....T..TTT  44
+TTTT;;TTT..|;;;;;;;..;;;....TT..;......TT.T.....T..TTT  45
+TTTT;;TTT..+---;;;;..;;;....TT..;.........T........TTT  46
+TTTT;;;;;..;;;;;;;;SSTTT........T.........TT......TTTT  47
+TTTT;;;;;..........SSTTTT......TTT.......TTTTTTTTTTTTT  48
+TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT  49
+TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT  50
+TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT  51
 """,
       extra=[]),
 ]

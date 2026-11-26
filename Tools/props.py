@@ -24,6 +24,7 @@
 #                                    a shut garage, a hedge block, a clump of trees, a low
 #                                    box you can shoot over, an above-ground pool (also
 #                                    low), a closed-off yard
+#   ("water", x, y, angle, w, d)     a pond or creek: nobody walks in, you see and shoot across
 #   ("garage", x, y, angle, back)    open garage, big door facing `angle`, back door if back=1
 #   ("treehouse", x, y, angle)       platform on posts, ramp running out toward `angle`
 #   ("paint", x, y, w, d, what)      ground color only (0 pavement, 1 asphalt, 2 dirt, 3 sand)
@@ -35,9 +36,9 @@ from shapely.geometry import Polygon, LineString, box
 
 SIZE = {"car": (4.6, 1.9), "van": (5.2, 2.2), "truck": (9.3, 2.5), "rv": (10.0, 2.6)}   # truck: 7 m box + 2.2 m cab, as MapBuilder.Truck builds it
 HEIGHT = {"truck": 3.4, "car": 1.75, "van": 2.4, "portable": 3.2, "shed": 3.2, "stand": 2.4, "tent": 2.7, "fence": 3.0, "hedge": 4.2, "rv": 3.5, "townhome": 9.0}
-HEIGHT.update({"lockup": 4.2, "garage": 4.2, "bush": 4.2, "thicket": 4.8, "crate": 1.3, "pool": 1.2, "yard": 0.6, "treehouse": 5.4})
+HEIGHT.update({"lockup": 4.2, "garage": 4.2, "bush": 4.2, "thicket": 6.0, "crate": 1.3, "pool": 1.2, "yard": 0.6, "treehouse": 5.4, "water": 0.0})
 GARAGE = (6.0, 8.0, 4.0)     # an open blueprint garage: width, depth, width of the big door
-LOW = ("car", "crate", "pool")   # low enough to see over
+LOW = ("car", "crate", "pool", "water")   # low enough to see over (water: you see and shoot across, nobody walks in)
 
 def height(p):
     """How tall a prop is, in meters."""
@@ -96,7 +97,7 @@ def footprint(p):
         _, x, y, a = p
         return _local(x, y, a, [(sx*2.3, sz*2.3, 0.3, 0.3) for sx in (-1, 1) for sz in (-1, 1)] + [(0, 3.4, 1.4, 1.4)])
     if k == "paint": return []
-    if k in ("portable", "shed", "stand", "townhome", "lockup", "bush", "thicket", "crate", "pool", "yard"):
+    if k in ("portable", "shed", "stand", "townhome", "lockup", "bush", "thicket", "crate", "pool", "yard", "water"):
         _, x, y, a, w, d = p; r = math.radians(a)
         return [_rect(x, y, math.cos(r), math.sin(r), w, d)]
     if k == "tent":   # only the four poles block you; the roof is overhead
