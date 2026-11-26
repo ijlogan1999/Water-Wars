@@ -27,7 +27,7 @@ def block(name):
     return floats(s[j+1:k])
 fences=block('Fences'); gates=block('Gates'); parktrees=block('ParkTrees')
 maps=[]
-for m in re.finditer(r'new MapDef\("([^"]+)", "([^"]*)", "([^"]+)",\n(.*?\d)\}\),?\n',s,re.S):
+for m in re.finditer(r'new MapDef\("([^"]+)", "([^"]*)", "([^"]+)",\n(.*?)\}\),?\n',s,re.S):
     body=m.group(4)
     lines=[l.strip() for l in body.split('\n') if l.strip()]
     area=floats(lines[0].replace('new float[]',''))

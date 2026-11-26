@@ -161,40 +161,50 @@ namespace WaterWars
             map.Center = new Vector3(b.center.x, 0f, b.center.y);
             near = Rect.MinMaxRect(b.xMin - 60f, b.yMin - 60f, b.xMax + 60f, b.yMax + 60f);
 
-            // ---- Ground and streets --------------------------------------------
-            Shapes.Box("Ground", new Vector3(325f, -0.5f, 130f), new Vector3(760f, 1f, 380f), Grass, root);
-            BuildStreets(root);
-
-            // ---- Houses and fences near the map -------------------------------
-            var lots = NeighborhoodData.Lots;
-            var siteLots = new Dictionary<int, SiteDef>();
-            foreach (var s in def.Sites) if (s.Lot >= 0) siteLots[s.Lot] = s;
             var treehouses = new List<TreehouseNav>();
             var siteTrees = new Dictionary<SiteDef, TreehouseNav>();
-            foreach (int i in def.LotIds)
+            if (def.Blueprint)
             {
-                siteLots.TryGetValue(i, out var site);
-                var th = BuildLot(root, lots[i], site);
-                if (th != null)
-                {
-                    treehouses.Add(th);
-                    if (site != null && site.Kind == SiteKind.Treehouse) siteTrees[site] = th;
-                }
+                // ---- A map drawn from a blank page: grass, then only what the drawing lists ----
+                Shapes.Box("Ground", new Vector3(b.center.x, -0.5f, b.center.y), new Vector3(760f, 1f, 760f), Grass, root);
+                BuildBackdrop(root, def);
             }
-            BuildFences(root, def);
+            else
+            {
+                // ---- Ground and streets --------------------------------------------
+                Shapes.Box("Ground", new Vector3(325f, -0.5f, 130f), new Vector3(760f, 1f, 380f), Grass, root);
+                BuildStreets(root);
 
-            // ---- Places ------------------------------------------------------------
-            if (near.Overlaps(Park)) BuildPark(root);
-            if (near.Overlaps(School)) BuildSchool(root);
-            if (near.xMax > 560f) BuildCreek(root);
-            BuildWoods(root);
+                // ---- Houses and fences near the map -------------------------------
+                var lots = NeighborhoodData.Lots;
+                var siteLots = new Dictionary<int, SiteDef>();
+                foreach (var s in def.Sites) if (s.Lot >= 0) siteLots[s.Lot] = s;
+                foreach (int i in def.LotIds)
+                {
+                    siteLots.TryGetValue(i, out var site);
+                    var th = BuildLot(root, lots[i], site);
+                    if (th != null)
+                    {
+                        treehouses.Add(th);
+                        if (site != null && site.Kind == SiteKind.Treehouse) siteTrees[site] = th;
+                    }
+                }
+                BuildFences(root, def);
+
+                // ---- Places ------------------------------------------------------------
+                if (near.Overlaps(Park)) BuildPark(root);
+                if (near.Overlaps(School)) BuildSchool(root);
+                if (near.xMax > 560f) BuildCreek(root);
+                BuildWoods(root);
+            }
 
             // ---- Close off everything outside the map ------------------------
             BuildEdges(root, def);
             foreach (var rb in def.Roadblocks) BuildRoadblock(root, rb);
 
-            // ---- This map's extra cover (cars, portables, tents, new fences...) ---
-            BuildProps(root, def);
+            // ---- This map's pieces (on a blueprint map, all of it; on the others,
+            //      the extra cover: cars, portables, tents, new fences...) ---
+            BuildProps(root, def, treehouses);
 
             Physics.SyncTransforms();
 
@@ -214,10 +224,25 @@ namespace WaterWars
             map.Sites = sites;
 
             // ---- Bot stepping stones (see NavGraph.cs) -----------------------
-            map.Nav.BuildGrid(b.xMin + 0.5f, b.xMax - 0.5f, b.yMin + 0.5f, b.yMax - 0.5f, 3f, p => def.Contains(new Vector2(p.x, p.z)));
+            if (def.Blueprint)
+            {
+                // One stone in the middle of every square of the drawing, so a stone never
+                // sits on a wall and even a one-square gate gets its own stone.
+                float half = BlueprintCell * 0.5f;
+                map.Nav.BuildGrid(b.xMin + half, b.xMax - half, b.yMin + half, b.yMax - half, BlueprintCell, p => def.Contains(new Vector2(p.x, p.z)));
+            }
+            else
+                map.Nav.BuildGrid(b.xMin + 0.5f, b.xMax - 0.5f, b.yMin + 0.5f, b.yMax - 0.5f, 3f, p => def.Contains(new Vector2(p.x, p.z)));
             foreach (var t in treehouses)
                 if (def.Contains(XZ(t.W(t.Bottom)))) ConnectTreehouse(map.Nav, t);
             AddPortals(map.Nav, def);
+            if (def.Blueprint)
+            {
+                // A treehouse standing on a site is part of that site: bots may hold it from up there.
+                foreach (var t in treehouses)
+                    foreach (var site in sites)
+                        if (Vector3.Distance(Flat(t.Frame.position), Flat(site.Center)) < site.Radius) site.HoldSpots.AddRange(t.WorldFloor());
+            }
 
             foreach (var kv in siteTrees)
             {
@@ -249,7 +274,37 @@ namespace WaterWars
             return map;
         }
 
+        // ---- Blueprint maps (must match Tools/blueprint.py and Tools/props.py) ----
+        const float BlueprintCell = 2f;          // one letter of the drawing is this many meters
+        const float BlueprintGarageWidth = 6f, BlueprintGarageDepth = 8f, BlueprintGarageDoor = 4f;
+
+        /// What you see past the edge of a blueprint map: a ring of houses and trees,
+        /// so from a treehouse it looks like the neighborhood goes on.
+        static void BuildBackdrop(Transform root, MapDef def)
+        {
+            var parent = Pivot(root, "Backdrop");
+            Rect b = def.Bounds;
+            int n = 0;
+            for (int side = 0; side < 4; side++)
+            {
+                bool alongX = side < 2;
+                float len = alongX ? b.width : b.height;
+                Vector2 inward = side == 0 ? Vector2.up : side == 1 ? Vector2.down : side == 2 ? Vector2.right : Vector2.left;
+                Vector2 along = alongX ? Vector2.right : Vector2.up;
+                Vector2 corner = side == 1 ? new Vector2(b.xMin, b.yMax) : side == 3 ? new Vector2(b.xMax, b.yMin) : new Vector2(b.xMin, b.yMin);
+                for (float t = -6f; t <= len + 6f; t += 17f, n++)
+                {
+                    Vector2 at = corner + along * t - inward * 9f;
+                    var house = Pivot(parent, "Backdrop House");
+                    BuildHouse(house, "House", Vector3.zero, new Vector3(11f, n % 3 == 0 ? 5.7f : 8.8f, 8f), HouseColors[n % HouseColors.Length]);
+                    Place(house, at, inward);   // front doors face away from the map, toward their own street
+                    Tree(parent, at + along * 8.5f - inward * 1.5f, 2.8f);
+                }
+            }
+        }
+
         static Vector2 XZ(Vector3 p) { return new Vector2(p.x, p.z); }
+        static Vector3 Flat(Vector3 p) { return new Vector3(p.x, 0f, p.z); }
 
         static float YawToward(Vector3 from, Vector3 to)
         {
@@ -281,7 +336,7 @@ namespace WaterWars
         static void AddPortals(NavGraph nav, MapDef def)
         {
             var spots = new List<Vector2>();
-            var g = NeighborhoodData.Gates;
+            var g = def.Blueprint ? new float[0] : NeighborhoodData.Gates;   // Maple Park's gates are not on a blueprint map
             for (int i = 0; i + 3 < g.Length; i += 4)
             {
                 var c = new Vector2(g[i], g[i + 1]);
@@ -502,10 +557,17 @@ namespace WaterWars
 
         // An open garage you CAN go inside. The big door faces -Z (the street).
         // With backDoor, there's also a doorway out the back into the yard.
-        static void BuildGarage(Transform root, string name, Vector3 bottomCenter, bool backDoor)
+        // `frontDoor` narrower than the garage leaves a piece of wall each side of the big door.
+        static void BuildGarage(Transform root, string name, Vector3 bottomCenter, bool backDoor, float w = 6.6f, float d = 8.4f, float frontDoor = 0f)
         {
-            const float w = 6.6f, d = 8.4f, h = GarageHeight, t = 0.25f;
+            const float h = GarageHeight, t = 0.25f;
             const float open = 2.6f;   // how tall the doorways are; the wall above them fills the rest
+            if (frontDoor > 0f && frontDoor < w - 0.1f)
+            {
+                float stub = (w - frontDoor) * 0.5f;
+                Shapes.BoxOnGround(name + " Front Wall L", bottomCenter + new Vector3(-w * 0.5f + stub * 0.5f, 0f, -d * 0.5f), new Vector3(stub, h, t), GarageGrey, root);
+                Shapes.BoxOnGround(name + " Front Wall R", bottomCenter + new Vector3(w * 0.5f - stub * 0.5f, 0f, -d * 0.5f), new Vector3(stub, h, t), GarageGrey, root);
+            }
             if (backDoor)
             {
                 float piece = (w - 2.2f) * 0.5f;
@@ -665,6 +727,8 @@ namespace WaterWars
 
                 switch (e.What)
                 {
+                    case Edge.Kind.Wall:
+                        break;   // a blueprint map's outer ring is already solid: nothing more to show
                     case Edge.Kind.Street:
                         if (len > 17f)
                         {
@@ -759,7 +823,7 @@ namespace WaterWars
             return v[4] >= 0f;
         }
 
-        static void BuildProps(Transform root, MapDef def)
+        static void BuildProps(Transform root, MapDef def, List<TreehouseNav> treehouses)
         {
             if (def.Props == null) return;
             var parent = Pivot(root, "Map Cover");
@@ -770,6 +834,77 @@ namespace WaterWars
                 n++;
                 switch (p.What)
                 {
+                    // ---- the big pieces of a blueprint map ----
+                    case Prop.Kind.House:
+                    {
+                        // A house you can't go inside. BuildHouse puts the front door on -Z,
+                        // so the house is turned until that side faces the angle in the data.
+                        var house = Pivot(parent, "House");
+                        BuildHouse(house, "House", Vector3.zero, new Vector3(v[3], v[5], v[4]), HouseColors[n % HouseColors.Length]);
+                        Place(house, new Vector2(v[0], v[1]), -Dir(v[2]));
+                        break;
+                    }
+                    case Prop.Kind.Lockup:
+                    {
+                        // A garage with its door shut: a solid grey box.
+                        var t = BoxProp(parent, "Shut Garage", v, GarageHeight, GarageGrey, 0.3f, Roof, true);
+                        Shapes.Box("Shut Garage Door", t.TransformPoint(new Vector3(0f, 1.3f, -v[4] * 0.5f - 0.03f)),
+                            new Vector3(Mathf.Min(v[3] - 0.8f, 4.8f), 2.6f, 0.05f), PicketWhite, t, false);
+                        break;
+                    }
+                    case Prop.Kind.Bush:
+                        BoxProp(parent, "Hedge Block", v, HedgeHeight, HedgeGreen);
+                        break;
+                    case Prop.Kind.Thicket:
+                    {
+                        // A clump of trees with brush so thick you can't push through or see through.
+                        var t = BoxProp(parent, "Thicket", v, TreeLineHeight, HedgeGreen * 0.85f);
+                        int across = Mathf.Max(1, Mathf.RoundToInt(v[3] / 5f)), deep = Mathf.Max(1, Mathf.RoundToInt(v[4] / 5f));
+                        for (int i = 0; i < across; i++)
+                            for (int j = 0; j < deep; j++)
+                            {
+                                Vector3 at = t.TransformPoint(new Vector3(-v[3] * 0.5f + v[3] * (i + 0.5f) / across, 0f, -v[4] * 0.5f + v[4] * (j + 0.5f) / deep));
+                                Tree(parent, XZ(at), 3.2f);
+                            }
+                        break;
+                    }
+                    case Prop.Kind.Crate:
+                        // Low enough to shoot over, tall enough to duck behind.
+                        BoxProp(parent, "Crates", v, 1.3f, Plank);
+                        break;
+                    case Prop.Kind.Yard:
+                    {
+                        // Somebody's fenced-off back yard: you can see the tree in it, but
+                        // nobody gets in. The box is invisible and only knee high: enough to
+                        // keep the bots' stepping stones out without stopping water in mid-air.
+                        var t = BoxProp(parent, "Closed Yard", v, 0.6f, Grass);
+                        Object.DestroyImmediate(t.GetComponentInChildren<Renderer>());
+                        if (v[3] >= 3.9f && v[4] >= 3.9f) Tree(parent, new Vector2(v[0], v[1]), 2.4f);
+                        break;
+                    }
+                    case Prop.Kind.Garage:
+                    {
+                        // An open garage you CAN go inside: 6 m wide, 8 m deep, a 4 m big door.
+                        var garage = Pivot(parent, "Garage");
+                        BuildGarage(garage, "Garage", Vector3.zero, v[3] > 0.5f, BlueprintGarageWidth, BlueprintGarageDepth, BlueprintGarageDoor);
+                        Place(garage, new Vector2(v[0], v[1]), -Dir(v[2]));
+                        break;
+                    }
+                    case Prop.Kind.Treehouse:
+                    {
+                        var frame = Pivot(parent, "Treehouse Frame");
+                        BuildTreehouse(frame, "Treehouse", Vector3.zero, 5f, 2.8f, out var nav);
+                        Place(frame, new Vector2(v[0], v[1]), -Dir(v[2]));   // the ramp comes down the -Z side
+                        nav.Frame = frame;
+                        treehouses.Add(nav);
+                        break;
+                    }
+                    case Prop.Kind.Paint:
+                    {
+                        Color c = v[4] < 0.5f ? Sidewalk : v[4] < 1.5f ? Asphalt : Dirt;
+                        FlatRect(parent, "Ground Paint", Rect.MinMaxRect(v[0] - v[2] * 0.5f, v[1] - v[3] * 0.5f, v[0] + v[2] * 0.5f, v[1] + v[3] * 0.5f), c, 0.012f + 0.004f * v[4]);
+                        break;
+                    }
                     case Prop.Kind.Car:
                         Car(parent, new Vector2(v[0], v[1]), Dir(v[2]), CarColors[n % CarColors.Length]);
                         break;

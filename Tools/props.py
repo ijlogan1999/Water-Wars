@@ -17,13 +17,37 @@
 #                                    lying on that line.
 #   ("tree", x, y, r)
 #
+# Blueprint maps (blueprint.py) are made only of props, so they add the big pieces:
+#   ("house", x, y, angle, w, d, h)  solid house; its front faces `angle`, w is the side
+#                                    with the front door, d runs back from it, h is its height
+#   ("lockup"|"bush"|"thicket"|"crate"|"yard", x, y, angle, w, d)
+#                                    a shut garage, a hedge block, a clump of trees, a low
+#                                    box you can shoot over, a closed-off yard
+#   ("garage", x, y, angle, back)    open garage, big door facing `angle`, back door if back=1
+#   ("treehouse", x, y, angle)       platform on posts, ramp running out toward `angle`
+#   ("paint", x, y, w, d, what)      ground color only (0 pavement, 1 asphalt, 2 dirt)
+#
 # This file is the one place the Python tools learn a prop's size; MapBuilder.cs
 # builds the same sizes in Unity (BuildProps).
 import math
 from shapely.geometry import Polygon, LineString, box
 
-SIZE = {"car": (4.6, 1.9), "van": (5.2, 2.2), "truck": (8.0, 2.5), "rv": (10.0, 2.6)}
+SIZE = {"car": (4.6, 1.9), "van": (5.2, 2.2), "truck": (9.3, 2.5), "rv": (10.0, 2.6)}   # truck: 7 m box + 2.2 m cab, as MapBuilder.Truck builds it
 HEIGHT = {"truck": 3.4, "car": 1.75, "van": 2.4, "portable": 3.2, "shed": 3.2, "stand": 2.4, "tent": 2.7, "fence": 3.0, "hedge": 4.2, "rv": 3.5, "townhome": 9.0}
+HEIGHT.update({"lockup": 4.2, "garage": 4.2, "bush": 4.2, "thicket": 4.8, "crate": 1.3, "yard": 0.6, "treehouse": 5.4})
+GARAGE = (6.0, 8.0, 4.0)     # an open blueprint garage: width, depth, width of the big door
+LOW = ("car", "crate")       # low enough to see over
+
+def height(p):
+    """How tall a prop is, in meters."""
+    return p[6] if p[0] == "house" else HEIGHT.get(p[0], 3.0)
+
+def _local(x, y, a, pieces):
+    """Boxes given in a piece's own frame: (sideways, back, size sideways, size back),
+    where "back" points away from the way the piece faces (angle a)."""
+    r = math.radians(a); bx, by = -math.cos(r), -math.sin(r)      # back
+    sx, sy = by, -bx                                              # sideways
+    return [_rect(x + sx*lx + bx*lz, y + sy*lx + by*lz, sx, sy, w, d) for lx, lz, w, d in pieces]
 
 def _rect(cx, cy, ux, uy, length, width):
     # rectangle `length` along (ux,uy) and `width` across it
@@ -55,7 +79,23 @@ def footprint(p):
     if k in ("car", "van", "truck", "rv"):
         _, x, y, a = p; l, w = SIZE[k]; r = math.radians(a)
         return [_rect(x, y, math.cos(r), math.sin(r), l, w)]
-    if k in ("portable", "shed", "stand", "townhome"):
+    if k == "house":
+        _, x, y, a, w, d, h = p; r = math.radians(a)
+        return [_rect(x, y, math.cos(r), math.sin(r), d, w)]
+    if k == "garage":      # the same walls MapBuilder.BuildGarage puts up, plus the workbench and boxes
+        _, x, y, a, back = p; w, d, door = GARAGE; t = 0.25; stub = (w - door) / 2
+        pieces = [(-w/2, 0, t, d), (w/2, 0, t, d), (-w/2 + stub/2, -d/2, stub, t), (w/2 - stub/2, -d/2, stub, t),
+                  (-w/2 + 0.8, 1.6, 1.2, 2.4), (w/2 - 1, 0.6, 1.3, 1.3)]
+        if back > 0.5:
+            pc = (w - 2.2) / 2
+            pieces += [(-w/2 + pc/2, d/2, pc, t), (w/2 - pc/2, d/2, pc, t)]
+        else: pieces.append((0, d/2, w, t))
+        return _local(x, y, a, pieces)
+    if k == "treehouse":   # four posts and the trunk; you can walk under the platform
+        _, x, y, a = p
+        return _local(x, y, a, [(sx*2.3, sz*2.3, 0.3, 0.3) for sx in (-1, 1) for sz in (-1, 1)] + [(0, 3.4, 1.4, 1.4)])
+    if k == "paint": return []
+    if k in ("portable", "shed", "stand", "townhome", "lockup", "bush", "thicket", "crate", "yard"):
         _, x, y, a, w, d = p; r = math.radians(a)
         return [_rect(x, y, math.cos(r), math.sin(r), w, d)]
     if k == "tent":   # only the four poles block you; the roof is overhead

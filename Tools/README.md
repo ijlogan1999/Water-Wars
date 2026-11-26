@@ -15,6 +15,24 @@ Run them from this folder, in this order:
 
 Then go back to Unity and press Play.
 
+## Maps drawn from a blank page (the remade maps)
+
+The first six maps were cut out of the real-size neighborhood, and the audit showed
+that is why they played like fields. The remade maps are not cut out of anything.
+Each one is a drawing made of letters in `newmaps.py`: one letter is one 2 m square,
+north is at the top, everything starts solid and the paths are carved out. The top
+of `blueprint.py` lists the letters (houses, shut and open garages, hedges, board
+fences, sheds, crates, vehicles, a treehouse, closed yards, the spawns and the sites).
+
+`python3 blueprint.py "Willow Court"` checks a drawing (the outside ring is solid,
+every square of floor can be reached, bots get a stepping stone everywhere, no gap
+is too thin to use), draws `drawings/new-willow-court.png`, and measures it against
+the audit's spec with the same ruler that measured the CS2 and Valorant maps.
+`python3 maps5.py && python3 export_cs.py` then writes it into the game, where it
+takes the place of the old map with the same name. The game builds such a map from
+its props alone (`MapBuilder.BuildProps`): no Maple Park streets or lots, and a ring
+of houses and trees past the edge so it does not look like the world ends.
+
 ## Checking that every map is walkable
 
 `python3 walkcheck/check_walkable.py` rebuilds each map's solid things (houses,

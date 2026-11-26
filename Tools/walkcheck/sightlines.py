@@ -16,7 +16,7 @@ def blockers(mp):
     # remove see-over things: picket fences and cars (rebuild them and subtract is messy,
     # so instead keep only shapes at least 1 m^2 or long walls that are not picket)
     pick = [LineString([fences[f*5:f*5+2], fences[f*5+2:f*5+4]]).buffer(0.1) for f in mp['fences'] if int(fences[f*5+4]) == 1]
-    cars = [g for p in mp.get('props', []) if p[0] == 'car' for g in PROPS.footprint(p)]
+    cars = [g for p in mp.get('props', []) if p[0] in PROPS.LOW for g in PROPS.footprint(p)]
     see_over = unary_union(pick + cars).buffer(0.05) if (pick or cars) else None
     if see_over is not None: obst = obst.difference(see_over)
     return area, obst.buffer(-0.05)

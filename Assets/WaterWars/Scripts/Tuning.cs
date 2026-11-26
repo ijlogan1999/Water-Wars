@@ -25,7 +25,7 @@ namespace WaterWars
         //   1 Park Run, 2 Willow Court, 3 Schoolyard, 4 Creekside,
         //   5 Pine St Backyards, 6 Hickory Corner.
         // 0 = a random one each match. Set a number to always play that map.
-        public const int MapChoice = 2;   // Willow Court, for testing the new narrow paths
+        public const int MapChoice = 2;   // Willow Court: the first map remade from a blank page (Tools/newmaps.py)
         // Set this to true to switch to a different map every ROUND instead.
         public const bool NewMapEachRound = false;
 

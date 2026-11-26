@@ -83,14 +83,18 @@ def build(mp, near, tweak=None):
     area=Polygon(np.array(mp['area']).reshape(-1,2))
     def onedge(p,w):
         return area.exterior.distance(Point(p))<w
+    # A blueprint map (drawn from a blank page, see blueprint.py) lists no lots: none of
+    # Maple Park's gates, street trees, park or school stand around it.
+    blueprint = not mp['lots']
     for g in range(0,len(gates),4):
+        if blueprint: break
         c=np.array(gates[g:g+2]); wv=np.array(gates[g+2:g+4]); al=np.array([-wv[1],wv[0]])
         if not near.contains(Point(c)) or not onedge(c,0.8): continue
         wall(obs,c-al*1.3,c+al*1.3,0.2)
     # street trees
     x0=STREETX[0]-ROW/2; x1=STREETX[3]+ROW/2; y0=STREETY[0]-ROW/2; y1=STREETY[3]+ROW/2
     def onh(p): return any(abs(p[1]-y)<ROW/2 for y in STREETY)
-    for i in range(4):
+    for i in range(0 if blueprint else 4):
         d=x0+10
         while d<x1:
             for s in(-1,1):
@@ -110,7 +114,7 @@ def build(mp, near, tweak=None):
         d/=L; out=np.array([d[1],-d[0]])
         wall(obs,a+out*0.35,b+out*0.35,0.4)
     # park (Park Run)
-    if near.intersects(box(202.5,94.5,382.5,166.5)):
+    if not blueprint and near.intersects(box(202.5,94.5,382.5,166.5)):
         for x in(301.5,326.5): obs.append(box(x-.125,108-.125,x+.125,108+.125))
         wall(obs,(306,116.8),(322,116.8),0.4); obs.append(box(310,97.9,318,99.3))
         for sx in(-1,1):
@@ -124,7 +128,7 @@ def build(mp, near, tweak=None):
         obs.append(box(309-7.5-.45,142.5-6-.45,309-7.5+.45,142.5-6+.45))
         wall(obs,(245,97.5),(255,97.5),0.1)
         for k in range(0,len(parktrees),3): tree(obs,parktrees[k:k+2])
-    if near.intersects(box(397.5,181.5,577.5,253.5)):
+    if not blueprint and near.intersects(box(397.5,181.5,577.5,253.5)):
         obs.append(box(400,215,470,248)); obs.append(box(400,190,425,215))
         obs.append(box(460.2,211.5,463.8,213.5)); obs.append(box(431,212.7,435,213.3))
         for p in((436,192),(450,192),(472,203)): obs.append(box(p[0]-.95,p[1]-2.3,p[0]+.95,p[1]+2.3))

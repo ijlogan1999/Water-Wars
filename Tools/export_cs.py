@@ -232,13 +232,37 @@ for i,m in enumerate(MAPS):
         ", ".join('new Prop(Prop.Kind.%s,%s)'%({'rv':'RV'}.get(c[0],c[0].title()),arr(c[1:])) for c in cover),
         ",".join(map(str,lots)),",".join(map(str,fen))))
     print(name,len(lots),"lots",len(fen),"fences",len(pcs),"edges",len(rbs),"blocks",[c for _,_,c,_ in pcs])
+# ---------- remade maps ----------
+# A map drawn from a blank page (newmaps.py, checked and turned into pieces by blueprint.py)
+# takes the place of the old map with the same name. It lists no lots or fences: the
+# game builds it from its props alone.
+import blueprint, newmaps
+names=[m["name"].split(". ",1)[1].replace(" (the one you approved)","") for m in MAPS]
+for bp in newmaps.MAPS:
+    mp=blueprint.compile(bp)
+    line='''            new MapDef("%s", "%s", "%s",
+                %s,
+                %s, %s,
+                new[]{ %s },
+                new Roadblock[]{ },
+                new[]{ %s },
+                new Prop[]{ %s },
+                new int[]{},
+                new int[]{})'''%(mp["name"],mp["note"].replace('"',"'"),mp["start"],arr(mp["area"]),arr(mp["att"]),arr(mp["dfn"]),
+        ", ".join('new SiteDef("%s",SiteKind.%s,%d,%s,%s)'%(label,kind,lot,arr(c),F(rad)) for label,kind,lot,c,rad in mp["sites"]),
+        ", ".join('new Edge(%s,%s,Edge.Kind.%s)'%(arr(p),arr(q),k) for p,q,k in mp["edges"]),
+        ", ".join('new Prop(Prop.Kind.%s,%s)'%({'rv':'RV'}.get(c[0],c[0].title()),arr(c[1:])) for c in mp["props"]))
+    if mp["name"] in names: map_lines[names.index(mp["name"])]=line
+    else: map_lines.append(line); names.append(mp["name"])
+    print("remade:",mp["name"],len(mp["props"]),"pieces")
 park="".join("%s,%s,%s,"%(F(x),F(y),F(r)) for x,y,r in D["PARKTREES"])
 out='''// NeighborhoodData.cs   (GENERATED: made by a script from the Maple Park drawings, don't edit by hand)
 // ---------------------------------------------------------------------------
-// The layout of the whole Maple Park neighborhood and its six example maps,
-// written out as plain numbers so the game builds exactly what the drawings
-// show. Positions are in meters: x goes east, y goes north (in Unity, the
-// drawing's y becomes z).
+// The layout of the whole Maple Park neighborhood and the maps, written out as
+// plain numbers so the game builds exactly what the drawings show. Positions are
+// in meters: x goes east, y goes north (in Unity, the drawing's y becomes z).
+// A map that lists no lots is a remade one, drawn from a blank page in
+// Tools/newmaps.py: the game builds it from its props alone.
 // ---------------------------------------------------------------------------
 
 namespace WaterWars

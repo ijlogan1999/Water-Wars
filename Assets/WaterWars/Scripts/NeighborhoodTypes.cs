@@ -96,7 +96,8 @@ namespace WaterWars
     /// One straight piece of a map's edge, and what's on the other side of it.
     public class Edge
     {
-        public enum Kind { Street, Curb, Lot, LotFenced, CurbFenced, Park, School, Woods, Verge }
+        // Wall = nothing to see, only the invisible wall (blueprint maps: their outer ring is already solid).
+        public enum Kind { Street, Curb, Lot, LotFenced, CurbFenced, Park, School, Woods, Verge, Wall }
         public readonly Vector2 A, B;
         public readonly Kind What;
         public Edge(float[] a, float[] b, Kind what) { A = LotRec.V(a); B = LotRec.V(b); What = what; }
@@ -112,15 +113,27 @@ namespace WaterWars
     ///   Fence, Hedge:                  x1, y1, x2, y2, gateAt, gateWidth
     ///                                  (a gap gateWidth wide, gateAt meters from the first end; gateAt below 0 = no gate)
     ///   Tree:                          x, y, radius
+    /// Blueprint maps (the ones drawn from a blank page, see Tools/blueprint.py) are made
+    /// of nothing but props, so they add the big pieces too:
+    ///   House:                         x, y, angle the front door faces, width, depth, height (solid, you can't go in)
+    ///   Lockup, Bush, Thicket, Crate:  x, y, angle, width, depth (a shut garage, a hedge block,
+    ///                                  a clump of trees, a box low enough to shoot over)
+    ///   Yard:                          x, y, angle, width, depth (a fenced-off yard nobody can get into)
+    ///   Garage:                        x, y, angle the big door faces, backDoor (1 = yes). You CAN go in.
+    ///   Treehouse:                     x, y, angle the ramp runs out toward
+    ///   Paint:                         x, y, width, depth, what (0 pavement, 1 asphalt, 2 dirt): flat ground color
     public class Prop
     {
-        public enum Kind { Car, Van, Truck, Portable, Shed, Stand, Tent, Fence, Hedge, Tree, Townhome, RV }
+        public enum Kind { Car, Van, Truck, Portable, Shed, Stand, Tent, Fence, Hedge, Tree, Townhome, RV,
+                           House, Lockup, Bush, Thicket, Crate, Yard, Garage, Treehouse, Paint }
         public readonly Kind What;
         public readonly float[] V;
         public Prop(Kind what, float[] v) { What = what; V = v; }
     }
 
     /// One map: a piece of the neighborhood with spawns, two sites and closed-off edges.
+    /// Or a "blueprint" map: one drawn from a blank page, built only from its Props
+    /// (it lists no neighborhood lots, and that is how the game tells them apart).
     public class MapDef
     {
         public readonly string Name, Note, AttackerStreet;
@@ -140,6 +153,10 @@ namespace WaterWars
             Attackers = LotRec.V(attackers); Defenders = LotRec.V(defenders);
             Sites = sites; Roadblocks = roadblocks; Edges = edges; Props = props; LotIds = lots; FenceIds = fences;
         }
+
+        /// True for a map drawn from a blank page (Tools/blueprint.py): no Maple Park
+        /// streets or lots, everything on it is one of its Props.
+        public bool Blueprint { get { return LotIds.Length == 0; } }
 
         /// True when a point (seen from above) is inside the play area.
         public bool Contains(Vector2 p)

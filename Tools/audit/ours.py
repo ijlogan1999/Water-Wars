@@ -33,8 +33,9 @@ FATTEN = 0.08
 
 
 def our_mask(i):
-    """Walk mask, key points, and what blocks the view (with heights) for map i."""
-    mp = maps[i]
+    """Walk mask, key points, and what blocks the view (with heights) for map i
+    (a number, or a map dict such as blueprint.compile() makes)."""
+    mp = maps[i] if isinstance(i, int) else i
     area = Polygon(np.array(mp['area']).reshape(-1, 2)); bx = area.bounds
     near = box(bx[0] - 60, bx[1] - 60, bx[2] + 60, bx[3] + 60)
     area, obst = build(mp, near)
@@ -79,8 +80,8 @@ def our_mask(i):
     for k, gs in fk.items(): paint(gs, LOT_FENCE_H[k])
     pk = {}
     for p in mp.get('props', []):
-        pk.setdefault(p[0], []).extend(g.buffer(0.3) for g in PROPS.footprint(p))
-    for k, gs in pk.items(): paint(gs, PROPS.HEIGHT.get(k, 3.0))
+        pk.setdefault(PROPS.height(p), []).extend(g.buffer(0.3) for g in PROPS.footprint(p))
+    for h in sorted(pk): paint(pk[h], h)      # where two things touch, the taller one counts
     # the map's edge: a band just outside the area, as tall as what stands there
     for a, b, k in mp['edges']:
         o = []; a = np.array(a, float); b = np.array(b, float); d = b - a; n = np.linalg.norm(d)
