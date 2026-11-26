@@ -328,4 +328,65 @@ X_______X,,,,,,,,,,,,,,,,X__X,,,,,,,,,,,,,,,,X_______X  50
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  51
 """,
       extra=[]),
+ dict(name="Creekside", start="the end of Cedar Ln",
+      A="the footbridge fort", B="the back yard at 130 Elm St",
+      note="A creek runs down the middle and you cross it three ways: the north footbridge, the culvert under the old road, "
+           "or the south footbridge. You can see and shoot across the water, but only cross where there is a way.",
+      #           11111111112222222222333333333344444444445555
+      # 012345678901234567890123456789012345678901234567890123
+      grid="""
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  00
+IIXXXXXXXXXXX__________T~~~T________XXXXXXXXXXXXXX___X  01
+IIX.........TTTTTTTTTTTT~~~TXXXXXXXXX,,,,,,,,,,,,X___X  02
+IIX.........TT.........T~~~T.........,,,,,,,,,,,,X_JJX  03
+IIX.........TT......TT.T~~~T.........,,,,,,A,,o,,X_JJX  04
+IIX...SS....TT......TT.T~~~T.........,,,,,,,,,o,,X_JJX  05
+IIX...SS....TT..........~~~T........X,,,SS,,,,,,,X_JJX  06
+IIX.........TT..........,,,...SS....X,,,SS,,,,,,,X_JJX  07
+IIX.............SS......,,,...SS....X,,,,,,,oo,,,X_JJX  08
+jjX......SS.....SS.....T~~~T........X,,,,,,,,,,,,X_JJX  09
+jjX.........TT.........T~~~T....oo..X,,,,,,,,,,,,X_JJX  10
+jjX.........TT.........T~~~TTT......XXXXXXX;;XX;;XXJJX  11
+jjX;;hhJJJJJJJTTTTTTTTTT~~~~~~TXXXXXXhhhh;;;;XX;;;;JJX  12
+jjX;;hhJJJJJJJ_________T~~~~~~TXXXXXXhhhh;;;;XX;;;;JJX  13
+jjX;;hhJJJJJJJ__TTTTTTTT~~~~~~T........hh;;IIIIXX;;JJX  14
+jjX;;;;JJJJJJJ__T.......TTT~~~T........hh;;IIIIXX;;JJX  15
+jjX;;;;JJJJJJJ__T.........T~~~T........hh;;IIII;;;;JJX  16
+X_Xhh;;JJJJJJJ__T.....SS..,,,,,........hh;;IIII;;;;JJX  17
+X_Xhh;;JJJJJJJT_T.....SS..,,,,,...SS...;;;;IIII;;XXJJX  18
+X_X,,,,,,,,,,,T_T.........,,,,,...SS...;;;;IIII;;XXJJX  19
+X_X:::::::::::T_T.........T~~~T........XXXXX........kX  20
+X_X:::::VV::::T_T...TT....T~~~T.S......XKKK.........kX  21
+X_X:::::::::::T_T...TT....T~~~T.S......XKKK.........kX  22
+XXX:::::::::::TTT.........T~~~T........XKKK.....2...kX  23
+X::::::T::::::;;;;;TTTTXXXT~~~T;;XXXXXXXKKK.........kX  24
+X::::::T::::::;;;;;T__TTTTT~~~T;;X_JJJJJKKK.........kX  25
+X:::1::::::VV:TTTTTTTTT~~~~~~~T;;X_JJJJJKKK......o..kX  26
+X:::::::::::::T.......T~~~~~~~T;;X_JJJJJKKK..SS..o..kX  27
+XXX:::::::::::;.......T~~~~~~~T;;XXJJJJJKKK..SS.....kX  28
+X_X:::::::::::;.......T~~~TTTTT;;;;JJJJJKKK.........kX  29
+X_X::::::VVV::T..SS...T~~~T___X;;;;JJJJJKKK.........kX  30
+X_X:::::::::::T..SS...T~~~T___XXX;;JJJJJGGGGiiXX;;HHHX  31
+X_X,,,,,,,,,,,T.......T~~~T_____X;;JJJJJGGGGii;;;;HHHX  32
+X_Xii;;KKKKKKKT.......T~~~T_____X;;JJJJJGGGGii;;;;HHHX  33
+KKXii;;KKKKKKKT.....SST~~~T_____X;;JJJJJGGGGii;;XXHHHX  34
+KKX;;;;KKKKKKKT.......T~~~T_____X;;;;;;;GGGGii;;;;HHHX  35
+KKX;;;;KKKKKKKT.......T~~~T_____X;;;;;;;GGGGii;;;;HHHX  36
+KKX;;iiKKKKKKKTTTT;;TTT~~~T_____XXXXXX;;X___iiii;;HHHX  37
+KKX;;iiKKKKKKKTTTT;;TTT~~~T__________X;;XXXXXXXX;;HHHX  38
+KKX;;iiKKKKKKK........T~~~TTTTXXXXXXXX......oo....XHHX  39
+KKX.........TT......TTT~~~~~~T.......X............XHHX  40
+KKX.........TT........T~~~~~~T.......X............XHHX  41
+hhX...................T~~~~~~T.SS....X.......B....XHHX  42
+hhX...TT.........TT....TTT~~~T.SS....X............XHHX  43
+hhX...TT....TT...TT.......,,,........X.........wwwXHHX  44
+hhX.........TT............,,,........X.........www_HHX  45
+hhX.........TT...........T~~~T...........SS....wwwXHHX  46
+hhX......TT.TT...........T~~~TTT.........SS.......XHHX  47
+hhX.........TTTTTTTTTTTXXT~~~TTT.........SS.......XHHX  48
+hhXXXXXXXXXXT____________T~~~T.......XXXXXXXXXXXXXX__X  49
+X________________________T~~~TXXXXXXXX_______________X  50
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  51
+""",
+      extra=[]),
 ]
