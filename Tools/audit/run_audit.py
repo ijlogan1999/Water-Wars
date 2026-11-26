@@ -4,7 +4,9 @@
 #   python3 run_audit.py <folder> ours    just our six maps (no downloads needed)
 #   python3 run_audit.py <folder> genre   just the CS2 and Valorant maps
 # <folder> holds the downloaded genre files (see genre.py for where they come from).
-# audit_baseline_2026-11-26.json is the audit's snapshot, kept for comparison.
+# audit_baseline_2026-11-26.json is the audit's snapshot, kept for comparison: every map as
+# it stood on the morning of 26 Nov 2026, before the wall heights and Willow Court changed.
+# (Our six were re-measured that day after ours.py stopped seeing through thin fences.)
 import json, os, sys
 import numpy as np
 from scipy import ndimage

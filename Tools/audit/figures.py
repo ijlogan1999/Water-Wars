@@ -1,6 +1,10 @@
 # figures.py: pictures for the audit, drawn from what run_audit.py saved in audit_out/.
 #   python3 figures.py <folder to write PNGs into>
 # Every panel is drawn at the same scale, so sizes compare directly.
+# Two more pictures are made by hand from Python (see the functions at the bottom):
+#   long_looks(png, map)              one of our maps: how far each spot can see, and the ways into its sites
+#   looks_data(npz, map) then before_after(png, old_npz, new_npz)
+#                                     the same map before and after a change, side by side
 import os, sys
 import numpy as np
 import matplotlib; matplotlib.use('Agg')
@@ -79,7 +83,7 @@ def long_looks(path, index=1):
     for nm in [k for k in pts if k not in ('att', 'dfn')]:
         e, cut = R.site_entrances(mask, pts, nm, res); wdt, n = e['ring_width'], e['ring_count']
         ys, xs = np.nonzero(cut)
-        ax.scatter(xs * res, ys * res, s=7, marker='s', color='#f47230', lw=0, label='Ways into a site' if nm == 'A' else None)
+        ax.scatter(xs * res, ys * res, s=7, marker='s', color='#f47230', lw=0, label='Ways into a site' if nm == 'A' else None, zorder=3)
         ax.text(pts[nm][0] * res, pts[nm][1] * res, nm, fontsize=15, color=INK, ha='center', va='center', weight='bold')
         ax.text(pts[nm][0] * res, pts[nm][1] * res + 5.5, '%d opening%s, %.0f m' % (n, '' if n == 1 else 's', wdt), fontsize=8.5, color=INK, ha='center', va='center')
     for k, word in (('att', 'Attackers'), ('dfn', 'Defenders')):
@@ -88,9 +92,49 @@ def long_looks(path, index=1):
     ax.set_xlim(xs.min() * res - 3, xs.max() * res + 3); ax.set_ylim(ys.max() * res + 3, ys.min() * res - 3)
     ax.set_aspect('equal'); ax.set_xticks([]); ax.set_yticks([])
     for s in ax.spines.values(): s.set_visible(False)
-    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.01), ncol=5, frameon=False, fontsize=9, title='Longest clear look from each spot', title_fontsize=9, handletextpad=0.2, columnspacing=1.2)
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.01), ncol=5, frameon=False, fontsize=9, title='Longest clear view from each spot', title_fontsize=9, handletextpad=0.2, columnspacing=1.2)
     name = meta['name'].split('. ')[-1]
     fig.suptitle('%s: %d%% of spots can see 40 m or more' % (name, round(100 * (longest >= 40).mean())), fontsize=14, color=INK, x=0.03, ha='left', y=0.985)
-    fig.text(0.03, 0.948, 'Real CS2 and Valorant maps: 10 to 29%, apart from Dust2 and Overpass. Orange marks the narrowest ring of openings around each site.', fontsize=8.6, color=QUIET)
+    fig.text(0.03, 0.948, 'On the real CS2 and Valorant maps it is 7 to 26% (Dust2: 55%). Orange marks the ways into each site.', fontsize=8.6, color=QUIET)
     fig.subplots_adjust(left=0.03, right=0.97, top=0.93, bottom=0.075)
+    fig.savefig(path, dpi=140, facecolor='white'); plt.close(fig)
+
+
+def looks_data(path, index=1):
+    """Save what before_after() draws for one of our maps: the floor, and how far each spot can see."""
+    import ruler as R, ours as O
+    from run_audit import keep_mask
+    mask, res, pts, meta = O.our_mask(index)
+    mask = R.largest_part(mask)
+    P, deg, view, rise, low, longest, rise3 = R.exposure(mask, res, keep=keep_mask(mask, pts, res), see=meta['see'], heights=meta['heights'])
+    np.savez_compressed(path, mask=mask, res=res, P=P, longest=longest, name=meta['name'].split('. ')[-1],
+                        pts=np.array([[k, v[0], v[1]] for k, v in pts.items()], dtype=object))
+
+
+def before_after(path, before, after, labels=('This morning', 'Now')):
+    """Two saved looks_data() files of the same map side by side, same scale and same colors."""
+    A = [np.load(f, allow_pickle=True) for f in (before, after)]
+    fig, axes = plt.subplots(1, 2, figsize=(13.2, 9.6))
+    steps = [(0, 20, 0.16), (20, 30, 0.38), (30, 40, 0.66), (40, 1e9, 1.0)]
+    names = ['under 20 m', '20 to 30 m', '30 to 40 m', '40 m or more']
+    for ax, d, lab in zip(axes, A, labels):
+        mask, res, P, longest = d['mask'], float(d['res']), d['P'], d['longest']
+        H, W = mask.shape
+        ax.imshow(np.where(mask, 1, 0), cmap=ListedColormap(['#ffffff', '#ececec']), extent=(0, W * res, H * res, 0), interpolation='nearest')
+        for (a, b, alpha), nm in zip(steps, names):
+            k = (longest >= a) & (longest < b)
+            ax.scatter(P[k, 0] * res, P[k, 1] * res, s=17, marker='s', color=OPEN, alpha=alpha, lw=0, label=nm)
+        words = {'att': 'Attackers', 'dfn': 'Defenders'}
+        for k, x, y in d['pts']:
+            big = k not in words
+            ax.text(float(x) * res, float(y) * res, words.get(k, k), fontsize=15 if big else 9, color=INK if big else QUIET, ha='center', va='center', weight='bold' if big else 'normal')
+        ys, xs = np.nonzero(A[0]['mask'] | (A[1]['mask'] if A[1]['mask'].shape == A[0]['mask'].shape else False))
+        ax.set_xlim(xs.min() * res - 3, xs.max() * res + 3); ax.set_ylim(ys.max() * res + 3, ys.min() * res - 3)
+        ax.set_aspect('equal'); ax.set_xticks([]); ax.set_yticks([])
+        for s in ax.spines.values(): s.set_visible(False)
+        ax.set_title('%s: %d%% of spots can see 40 m or more' % (lab, round(100 * (longest >= 40).mean())), fontsize=11.5, color=INK, loc='left', pad=6)
+    axes[0].legend(loc='upper center', bbox_to_anchor=(1.03, -0.01), ncol=4, frameon=False, fontsize=9, title='Longest clear view from each spot', title_fontsize=9, handletextpad=0.2, columnspacing=1.2)
+    fig.suptitle('%s, before and after' % str(A[1]['name']), fontsize=14, color=INK, x=0.03, ha='left', y=0.985)
+    fig.text(0.03, 0.945, 'On the real CS2 and Valorant maps 7 to 26% of spots can see 40 m or more (Dust2: 55%).', fontsize=8.8, color=QUIET)
+    fig.subplots_adjust(left=0.03, right=0.97, top=0.9, bottom=0.075, wspace=0.04)
     fig.savefig(path, dpi=140, facecolor='white'); plt.close(fig)

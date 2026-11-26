@@ -25,6 +25,11 @@ EDGE_H = {'Street': 3.2, 'Curb': 4.2, 'CurbFenced': 4.2, 'LotFenced': 4.2, 'Scho
 LOT_FENCE_H = {0: 3.0, 1: 1.1, 2: 4.2}     # wood, picket, hedge (MapBuilder.BuildFences)
 HOUSE_TALL = 1.35                          # MapBuilder.HouseTall
 GARAGE_H = 4.2                             # MapBuilder.GarageHeight
+# A wooden fence is 0.2 m thick, thinner than one 0.25 m grid cell, so a fence that is
+# tilted or sits between grid points would be drawn with holes in it and the ruler would
+# see (and walk) straight through. Every solid shape is fattened by this much first,
+# which makes the thinnest wall 0.36 m: always at least one whole cell, at any angle.
+FATTEN = 0.08
 
 
 def our_mask(i):
@@ -33,7 +38,7 @@ def our_mask(i):
     area = Polygon(np.array(mp['area']).reshape(-1, 2)); bx = area.bounds
     near = box(bx[0] - 60, bx[1] - 60, bx[2] + 60, bx[3] + 60)
     area, obst = build(mp, near)
-    free = area.difference(obst)
+    free = area.difference(obst.buffer(FATTEN))
     xs = np.arange(bx[0] - 1, bx[2] + 1, RES); ys = np.arange(bx[1] - 1, bx[3] + 1, RES)
     X, Y = np.meshgrid(xs, ys)
     flip = lambda a: a[::-1]                                   # so north is up
@@ -46,7 +51,7 @@ def our_mask(i):
     # ---- what you can see across: floor plus picket fences and cars -----------
     _, ob = blockers(mp)
     inside = shapely.contains_xy(area, X, Y)
-    see = flip(inside & ~shapely.contains_xy(ob, X, Y))
+    see = flip(inside & ~shapely.contains_xy(ob.buffer(0.05 + FATTEN), X, Y))   # blockers() shrank them by 0.05
 
     # ---- how tall each thing that blocks the view is ---------------------------
     Hr = np.zeros(X.shape)
