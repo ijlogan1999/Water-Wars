@@ -7,12 +7,13 @@
 # one 2 m square, north is at the top, and everything starts solid. You carve the paths.
 #
 #   ground you can walk on
-#     .  grass          ,  pavement        :  asphalt (street)      ;  dirt
+#     .  grass          ,  pavement        :  asphalt (street)      ;  dirt       s  sand
 #     1  where the attackers start         2  where the defenders start
 #     A  B  the middle of each site
 #     g  floor of an OPEN garage (draw 3 wide and 4 deep; a short end that touches
 #        ground you can walk on gets a door: the big door on the pavement side)
 #     ^ v < >  a treehouse; the arrow is the way its ramp runs out (keep 5 squares clear)
+#     p  floor under a party tent or pavilion roof (draw a rectangle; you walk under it)
 #
 #   solid things (nobody walks through, nobody sees through unless it says so)
 #     H I J K  two-storey house (8.8 m). Squares with the same letter that touch are one
@@ -22,7 +23,7 @@
 #     X  hedge, a full 2 m thick (4.2 m)        T  trees and brush (4.8 m)
 #     - | +  board fence (3 m) down the middle of the square: - runs east-west,
 #            | runs north-south, + is a corner or a T
-#     o  crates, 1.3 m: you can shoot over them
+#     o  crates, 1.3 m: you can shoot over them      w  above-ground pool, 1.2 m: the same
 #     V  a parked vehicle: 2 in a row is a car (you can see over it), 3 a van,
 #        4 a box truck, 5 a motorhome
 #     _  a closed yard: grass and a tree nobody can get to. It must be walled in.
@@ -38,14 +39,14 @@ import math, os, sys
 import numpy as np
 
 CELL = 2.0                        # meters per letter (MapBuilder.BlueprintCell)
-GROUND = {'.': None, ',': 0, ':': 1, ';': 2}          # paint number, None = grass
+GROUND = {'.': None, ',': 0, ':': 1, ';': 2, 's': 3}  # paint number, None = grass
 MARKS = {'1': 'att', '2': 'dfn', 'A': 'A', 'B': 'B'}
 RAMP = {'>': 0, '^': 90, '<': 180, 'v': 270}
 HOUSES = {**{c: 8.8 for c in 'HIJK'}, **{c: 5.7 for c in 'hijk'}}
-BOXES = {'G': 'lockup', 'S': 'shed', 'X': 'bush', 'T': 'thicket', 'o': 'crate', '_': 'yard'}
+BOXES = {'G': 'lockup', 'S': 'shed', 'X': 'bush', 'T': 'thicket', 'o': 'crate', '_': 'yard', 'w': 'pool'}
 FENCE = '-|+'
 VEHICLES = {2: 'car', 3: 'van', 4: 'truck', 5: 'rv'}
-WALK = set(GROUND) | set(MARKS) | set(RAMP) | {'g'}
+WALK = set(GROUND) | set(MARKS) | set(RAMP) | {'g', 'p'}
 KNOWN = WALK | set(HOUSES) | set(BOXES) | set(FENCE) | {'V'}
 N, E, S, W = (0, -1), (1, 0), (0, 1), (-1, 0)         # (column, row) steps; row 0 is the north edge
 
@@ -137,14 +138,14 @@ def compile(bp, origin=(0.0, 0.0)):
     def ground(c, r):
         ch = rows[r][c]
         if ch in GROUND: return GROUND[ch]
-        if ch == 'g': return 0
+        if ch in 'gp': return 0
         if ch in MARKS or ch in RAMP:      # a marker takes the color of the floor next to it
             near = [GROUND[at(c + dc, r + dr)] for dc, dr in (W, E, N, S) if at(c + dc, r + dr) in GROUND]
             return max(set(near), key=near.count) if near else None
         return 'solid'
-    gl = [''.join({None: ' ', 0: 'a', 1: 'b', 2: 'c', 'solid': ' '}[ground(c, r)] for c in range(Wn)) for r in range(Hn)]
-    for ch, c, r, w, h in rectangles(gl, 'abc'):
-        x, y, sx, sy = box(c, r, w, h); props.append(('paint', x, y, sx, sy, 'abc'.index(ch)))
+    gl = [''.join({None: ' ', 0: 'a', 1: 'b', 2: 'c', 3: 'd', 'solid': ' '}[ground(c, r)] for c in range(Wn)) for r in range(Hn)]
+    for ch, c, r, w, h in rectangles(gl, 'abcd'):
+        x, y, sx, sy = box(c, r, w, h); props.append(('paint', x, y, sx, sy, 'abcd'.index(ch)))
 
     # ---- which way a block should face: the side with the most floor along it -----------
     def floor_along(c, r, w, h):
@@ -178,6 +179,9 @@ def compile(bp, origin=(0.0, 0.0)):
         if not opens: raise Problem('%s: row %d col %d: the open garage has no floor at either end' % (name, r, c))
         opens.sort(key=lambda o: ground(*o[1]) is None)       # the big door goes on the paved (driveway) side
         x, y, _, _ = box(c, r, w, h); props.append(('garage', x, y, opens[0][0], 1 if len(opens) > 1 else 0))
+    # ---- party tents: a roof on four poles over the floor drawn with p ---------------------
+    for ch, c, r, w, h in rectangles(rows, 'p'):
+        x, y, sx, sy = box(c, r, w, h); props.append(('tent', x, y, 0, sx, sy))
     # ---- treehouses ----------------------------------------------------------------------
     for r in range(Hn):
         for c in range(Wn):
@@ -227,7 +231,7 @@ def compile(bp, origin=(0.0, 0.0)):
 # ---------------------------------------------------------------------------------------
 # A picture of the drawing
 # ---------------------------------------------------------------------------------------
-COLORS = {'.': '#9fce7a', ',': '#d9d5cc', ':': '#77777c', ';': '#c9a777', 'g': '#f1ede4', '_': '#b9dc9a',
+COLORS = {'.': '#9fce7a', ',': '#d9d5cc', ':': '#77777c', ';': '#c9a777', 's': '#ead9a0', 'g': '#f1ede4', '_': '#b9dc9a', 'w': '#69bdf0',
           'G': '#8d8d8a', 'S': '#6f8266', 'X': '#2f6b2a', 'T': '#1f4f1c', 'o': '#b08556', 'V': '#3b5f9c',
           '-': '#7a5230', '|': '#7a5230', '+': '#7a5230'}
 COLORS.update({c: '#b5654b' for c in 'HIJK'}); COLORS.update({c: '#d9a28c' for c in 'hijk'})
@@ -242,9 +246,9 @@ def draw(bp, path, mp=None):
     fig, ax = plt.subplots(figsize=(Wn * 0.19 + 1, Hn * 0.19 + 1.2))
     ax.add_patch(Rectangle((0, 0), Wn * CELL, Hn * CELL, fc='#9fce7a', ec='none'))
     for p in mp['props']:
-        if p[0] == 'paint': ax.add_patch(Rectangle((p[1] - p[3] / 2, p[2] - p[4] / 2), p[3], p[4], fc=[COLORS[','], COLORS[':'], COLORS[';']][int(p[5])], ec='none'))
+        if p[0] == 'paint': ax.add_patch(Rectangle((p[1] - p[3] / 2, p[2] - p[4] / 2), p[3], p[4], fc=[COLORS[','], COLORS[':'], COLORS[';'], COLORS['s']][int(p[5])], ec='none'))
     shade = {'house': None, 'lockup': COLORS['G'], 'shed': COLORS['S'], 'bush': COLORS['X'], 'thicket': COLORS['T'], 'crate': COLORS['o'],
-             'yard': COLORS['_'], 'fence': COLORS['-'], 'hedge': COLORS['X'], 'garage': '#55555a', 'treehouse': '#7a5230',
+             'yard': COLORS['_'], 'pool': COLORS['w'], 'fence': COLORS['-'], 'hedge': COLORS['X'], 'garage': '#55555a', 'treehouse': '#7a5230',
              'car': '#6f8fd0', 'van': COLORS['V'], 'truck': COLORS['V'], 'rv': COLORS['V'], 'stand': '#e67e22', 'tent': '#ff6fa8',
              'portable': '#d9b26f', 'townhome': '#b5838d', 'tree': '#2e7d32'}
     for p in mp['props']:
@@ -252,6 +256,8 @@ def draw(bp, path, mp=None):
         col = shade.get(p[0]) or ('#b5654b' if p[6] > 7 else '#d9a28c')
         for g in PROPS.footprint(p):
             ax.add_patch(MPoly(list(g.exterior.coords), fc=col, ec='#222' if p[0] not in ('yard',) else 'none', lw=0.4))
+        if p[0] == 'tent':
+            ax.add_patch(Rectangle((p[1] - p[4] / 2, p[2] - p[5] / 2), p[4], p[5], fc='#ff6fa8', ec='#222', lw=0.5, alpha=.45, hatch='//'))
         if p[0] == 'treehouse':
             r = math.radians(p[3]); ax.add_patch(Rectangle((p[1] - 2.5, p[2] - 2.5), 5, 5, fc='#c49a6c', ec='#222', lw=0.5, alpha=.8))
             ax.plot([p[1] + math.cos(r) * 2.5, p[1] + math.cos(r) * 9.8], [p[2] + math.sin(r) * 2.5, p[2] + math.sin(r) * 9.8], color='#c49a6c', lw=4)
@@ -268,7 +274,7 @@ def draw(bp, path, mp=None):
     key = [('two-storey house', '#b5654b'), ('one-storey house', '#d9a28c'), ('shut garage', COLORS['G']), ('hedge', COLORS['X']),
            ('trees', COLORS['T']), ('board fence', COLORS['-']), ('shed', COLORS['S']), ('crates (shoot over)', COLORS['o']),
            ('truck or van', COLORS['V']), ('car (see over)', '#6f8fd0'), ('closed yard', COLORS['_']), ('street', COLORS[':']),
-           ('pavement', COLORS[',']), ('dirt', COLORS[';'])]
+           ('pavement', COLORS[',']), ('dirt', COLORS[';']), ('pool (see over)', COLORS['w']), ('tent roof', '#ff9cc4')]
     ax.legend(handles=[Patch(fc=c, ec='#444', lw=0.4, label=t) for t, c in key], loc='upper center', bbox_to_anchor=(0.5, -0.03),
               ncol=7, fontsize=6.5, frameon=False, handlelength=1.2, columnspacing=1.0)
     fig.tight_layout(); fig.savefig(path, dpi=110); plt.close(fig)

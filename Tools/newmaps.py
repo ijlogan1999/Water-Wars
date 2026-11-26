@@ -8,6 +8,7 @@
 #   A B  site middles      g  open garage floor     ^ v < >  treehouse (arrow = ramp)
 #   H I J K  two-storey houses    h i j k  one-storey houses    G  shut garage    S  shed
 #   X  hedge    T  trees    - | +  board fence    o  crates (shoot over)    V  vehicle
+#   w  above-ground pool (shoot over)    p  floor under a party tent    s  sand
 #   _  a closed yard nobody can get into
 #
 # The number after each row is only a label (row 00 is the north edge), so a row is easy
@@ -79,6 +80,65 @@ X_V::::::::::::VV:::V:::::::::::::::::V::::::::V_X  50
 X_X,,,,,,,,,,,,,,,,,V,,,,,,,,,,,,,,,,,V,,,,,,,,X_X  51
 XhhhhhhhhIIIIIIIIjjjjjjjjHHHHHHHHiiiiiiiiJJJJJJJJX  52
 XhhhhhhhhIIIIIIIIjjjjjjjjHHHHHHHHiiiiiiiiJJJJJJJJX  53
+""",
+      extra=[]),
+ dict(name="Pine St Backyards", start="Pine St",
+      A="the birthday party behind 122 Cedar Ln", B="the pool behind 156 Birch Ln",
+      note="Two rows of back yards run east from Pine St, gate to gate, with the garage alley between them. Each site "
+           "has three doors: the last yard's gate, its lobby yard off the alley, and the defenders' side path.",
+      #           1111111111222222222233333333334444444444555555
+      # 01234567890123456789012345678901234567890123456789012345
+      grid="""
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  00
+IIIXXXXXXHHHHHHHHHiiiiiiiiiJJJJJJJJJkkkkkkkkkHHHHHHHHHHX  01
+III,::::,HHHHHHHHHiiiiiiiiiJJJJJJJJJkkkkkkkkkHHHHHHHHHHX  02
+III,::::,HHHHHHHHHiiiiiiiiiJJJJJJJJJk............HHHHHHX  03
+III,::::,X........T........T........X.........SS.X___JJX  04
+III,::::,X........T.SS..............X....pppp.SS.X___JJX  05
+III,::::,X..www...T.................X....pppp....XXXXJJX  06
+III,::::,...www...T...SS...T..SS....X....ppppA.......JJX  07
+III,::::,.........T...SS...T..SS....X................JJX  08
+jjj,::::,X.................T............X.oo.....XX..JJX  09
+jjj,::::,X.....SS..........T...SS.......X.....oo.XX..JJX  10
+jjj,::::,X........T........T............X........XX..JJX  11
+jjj,:VVVVXXXXXXXXXXXX..XXXXXXXXXXXXXXXXXXXX..XXXXXX..JJX  12
+jjj,::::,HHHHHHHHHH........KKKKKKKKKK........KKKKKX..JJX  13
+jjj,::::,HHHHHHHHHH........KKKKKKKKKK........KKKKKX..JJX  14
+jjj,::::,HHHHHHHHHH..SS....KKKKKKKKKK...SS...KKKKKX..JJX  15
+jjj,::::,HHHHHHHHHH..SS....KKKKKKKKKK...SS...KKKKKX..JJX  16
+KKK,::::,HHHHHHHHHH........KKKKKKKKKK........KKKKKX..JJX  17
+KKK,::::,X_XgggX__X.....SS.X__GGGG__X.o......KKKKKX..JJX  18
+KKKVVVV:,X_XgggX__X........X__GGGG__X........KKKKK.....X  19
+KKK,::::,X_XgggX__X........X__GGGG__X........X___X.....X  20
+KKK,::::,XXXgggXXXXXXX..XXXXXXGGGG__XX;;XXXXXhhhhX...ooX  21
+KKK,::::,;;;;;;;;;;;;;;;;ggggXGGG_GGGX;;XGGGGhhhhX.....X  22
+KKK,::::,;;;;;;VV;;;;;;;;ggggXGGGXGGGX;;XGGGGhhhhX.....X  23
+KKK,:1::,;;;;;;;;;;;;;;;;ggggX;SS;;;;;;;;SS;;hhhhX..2..X  24
+hhh,::::,XXGGGGXXgggXX;;;;;;;;;SS;;;;;;;;SS;;;;;XX.....X  25
+hhh,::::,X_GGGG_XgggXX;;;;;;;;;;;;;;SS;;;;;;;;;;;;.SS..X  26
+hhh,::::,X_GGGG_XgggXX;;;;;;;;;;;;;;SS;;;;;;;;;;;;.SS..X  27
+hhh,::::,X_GGGG_XgggXXTTTTTTT..TTTTTTTTTTTT..TTTXX.....X  28
+hhh,::::,X______XXXXX______X........X........X___X.....X  29
+hhh,:VVVVhhhhhhhhhKKKKKKKKKK........X........IIIII.....X  30
+hhh,::::,hhhhhhhhhKKKKKKKKKK...SS...X.o......IIIIIIX..hX  31
+hhh,::::,hhhhhhhhhKKKKKKKKKK...SS...X.o...SS.IIIIIIX..hX  32
+JJJ,::::,hhhhhhhhhKKKKKKKKKK........X.....SS.IIIIIIX..hX  33
+JJJ,::::,hhhhhhhhhKKKKKKKKKK........X........IIIIIIX..hX  34
+JJJ,::::,hhhhhhhhhKKKKKKKKKK.SS.....X........IIIIIIX..hX  35
+JJJVVVV:,hhhhhhhhhKKKKKKKKKK........X........IIIIIIX..hX  36
+JJJ,::::,XXXXXXXXXXXXXXXXXXXXXXX..XXXXXXX..XXIIIIIIX..hX  37
+JJJ,::::,X........T........T........X............X_X..hX  38
+JJJ,::::,X..........S......T..................SS.X_X..hX  39
+JJJ,::::,X.................T...SS.............SS.XXX..hX  40
+iii,::::,....SS...T...ppp..T...SS........wwww.........hX  41
+iii,::::,....SS...T...ppp..T........X....wwwwB........hX  42
+iii,::::,X........T...ppp...........X....wwww....XXXXXhX  43
+iii,::::,X.SS.....T..........SS.....X.o..........X____hX  44
+iii,::::,X........T........T........X.o.......oo.X_____X  45
+iii,::::,iiiiiiiiiJJJJJJJJJhhhhhhhhhX............X_____X  46
+iii,::::,iiiiiiiiiJJJJJJJJJhhhhhhhhhIIIIIIIIIjjjjjjjjjjX  47
+iiiXXXXXXiiiiiiiiiJJJJJJJJJhhhhhhhhhIIIIIIIIIjjjjjjjjjjX  48
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  49
 """,
       extra=[]),
 ]

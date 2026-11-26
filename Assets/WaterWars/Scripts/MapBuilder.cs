@@ -872,6 +872,9 @@ namespace WaterWars
                         // Low enough to shoot over, tall enough to duck behind.
                         BoxProp(parent, "Crates", v, 1.3f, Plank);
                         break;
+                    case Prop.Kind.Pool:
+                        BoxProp(parent, "Above-Ground Pool", v, 1.2f, new Color(0.4f, 0.75f, 0.95f));
+                        break;
                     case Prop.Kind.Yard:
                     {
                         // Somebody's fenced-off back yard: you can see the tree in it, but
@@ -901,7 +904,7 @@ namespace WaterWars
                     }
                     case Prop.Kind.Paint:
                     {
-                        Color c = v[4] < 0.5f ? Sidewalk : v[4] < 1.5f ? Asphalt : Dirt;
+                        Color c = v[4] < 0.5f ? Sidewalk : v[4] < 1.5f ? Asphalt : v[4] < 2.5f ? Dirt : Sand;
                         FlatRect(parent, "Ground Paint", Rect.MinMaxRect(v[0] - v[2] * 0.5f, v[1] - v[3] * 0.5f, v[0] + v[2] * 0.5f, v[1] + v[3] * 0.5f), c, 0.012f + 0.004f * v[4]);
                         break;
                     }

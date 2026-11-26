@@ -116,16 +116,16 @@ namespace WaterWars
     /// Blueprint maps (the ones drawn from a blank page, see Tools/blueprint.py) are made
     /// of nothing but props, so they add the big pieces too:
     ///   House:                         x, y, angle the front door faces, width, depth, height (solid, you can't go in)
-    ///   Lockup, Bush, Thicket, Crate:  x, y, angle, width, depth (a shut garage, a hedge block,
-    ///                                  a clump of trees, a box low enough to shoot over)
+    ///   Lockup, Bush, Thicket, Crate, Pool:  x, y, angle, width, depth (a shut garage, a hedge block, a clump
+    ///                                  of trees, a box low enough to shoot over, an above-ground pool)
     ///   Yard:                          x, y, angle, width, depth (a fenced-off yard nobody can get into)
     ///   Garage:                        x, y, angle the big door faces, backDoor (1 = yes). You CAN go in.
     ///   Treehouse:                     x, y, angle the ramp runs out toward
-    ///   Paint:                         x, y, width, depth, what (0 pavement, 1 asphalt, 2 dirt): flat ground color
+    ///   Paint:                         x, y, width, depth, what (0 pavement, 1 asphalt, 2 dirt, 3 sand): flat ground color
     public class Prop
     {
         public enum Kind { Car, Van, Truck, Portable, Shed, Stand, Tent, Fence, Hedge, Tree, Townhome, RV,
-                           House, Lockup, Bush, Thicket, Crate, Yard, Garage, Treehouse, Paint }
+                           House, Lockup, Bush, Thicket, Crate, Yard, Garage, Treehouse, Paint, Pool }
         public readonly Kind What;
         public readonly float[] V;
         public Prop(Kind what, float[] v) { What = what; V = v; }

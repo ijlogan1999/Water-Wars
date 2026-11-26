@@ -220,10 +220,10 @@ def walk_times(mp, step=0.5):
         for dst in ('A','B') if src!='A' else ('B',):
             out[src+'>'+dst]=float(D[cells[dst]])
     return out
-TARGET={'att':(110,140),'dfn':(30,55),'A>B':(55,80)}
+TARGET={'att':(95,125),'dfn':(40,65),'A>B':(80,110)}     # the audit's spec (blueprint.py SPEC)
 def verdict(k,v):
     lo,hi=TARGET['A>B' if k=='A>B' else k.split('>')[0]]
-    return 'ok' if lo-5<=v<=hi+10 else ('short' if v<lo else 'long')
+    return 'ok' if lo<=v<=hi else ('short' if v<lo else 'long')
 if __name__=='__main__':
     for i,mp in enumerate(maps):
         print(mp['name'], check(mp, draw='walk_map%d.png'%(i+1)))
