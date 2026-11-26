@@ -16,13 +16,16 @@ namespace WaterWars
         public const int TeamSize = 5;            // 5v5. You + 4 bot teammates vs 5 bots.
         public const int RoundsToWin = 7;         // First to 7 rounds.
         public const int SwapSidesAfterRound = 6; // Teams switch attack/defend after round 6.
+        // Which side YOU start on. true = you defend the sites first (attack after the swap),
+        // false = you attack first.
+        public const bool YouStartOnDefense = true;
 
         // ---- Map -----------------------------------------------------------
         // Every match picks one of the Maple Park maps (see NeighborhoodData.Maps):
         //   1 Park Run, 2 Willow Court, 3 Schoolyard, 4 Creekside,
         //   5 Pine St Backyards, 6 Hickory Corner.
         // 0 = a random one each match. Set a number to always play that map.
-        public const int MapChoice = 0;
+        public const int MapChoice = 2;   // Willow Court, for testing the new narrow paths
         // Set this to true to switch to a different map every ROUND instead.
         public const bool NewMapEachRound = false;
 
