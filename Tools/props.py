@@ -8,7 +8,7 @@
 #   ("rv", x, y, angle)              motorhome (RV), 10 m long, blocks the view
 #   ("portable"|"shed"|"stand"|"tent"|"townhome", x, y, angle, w, d)
 #                                    townhome = a row of joined two-storey homes (solid,
-#                                    7 m tall): a long block that makes narrow alleys
+#                                    9 m tall): a long block that makes narrow alleys
 #                                    box w wide (east-west at angle 0) and d deep
 #   ("fence"|"hedge", x1, y1, x2, y2, gap_at, gap_w)
 #                                    tall fence or hedge from (x1,y1) to (x2,y2), with a

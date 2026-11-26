@@ -44,26 +44,29 @@ MAPS=[
          # --- corridors and rooms (25 Nov) ---
          ("hedge",67.5,95.5,80,95.5,-1,0),("hedge",85,95.5,91.5,95.5,-1,0),          # curb hedges along Birch Ln: three ways out of spawn
          ("hedge",103.5,95.5,112,95.5,-1,0),("hedge",117,95.5,127.5,95.5,-1,0),
-         ("hedge",91.5,131,91.5,150,8,3),("hedge",103.5,131,103.5,150,8,3),          # the top of the stem is a corridor, with a side door each way
+         ("hedge",91.5,131,91.5,150,8,3),("hedge",103.5,131,103.5,150,13,3),         # the top of the stem is a corridor, with a side door each way (not facing each other)
          ("hedge",88,163,107,163,-1,0),("hedge",88,181,107,181,-1,0),              # big hedge-walled island in the cul-de-sac:
          ("hedge",88,163,88,181,-1,0),("hedge",107,163,107,181,-1,0),              #   mid is a 7-8 m ring road you fight around
                   ("fence",43.5,172,82.5,172,20,3),("hedge",151.5,172,112.5,172,20,3),        # gates from the side alleys up into the site rooms
          ("hedge",52,217.5,77.3,192.2,14,3),("hedge",143,217.5,117.7,192.2,14,3),     # tall hedges wall the sites off from the defenders' lawn (one gate each)
          ("shed",137,186,0,4,4),                               # sheds inside each site room: something to plant behind
                   ("shed",61,194,0,3,3),("shed",134,196,0,3,3),
-         ("truck",97.5,189,0),
+         ("truck",97.5,190.75,0),                                                    # parked in front of the two lawn gates (see "the lawn mouth" below)
          # --- walled yards (25 Nov): tall fences join house to house, so each yard is a
          #     room and its doors are the only ways in. Fences may run into a house. ---
          ("fence",67.5,104,72,104,-1,0),("fence",127.5,104,123,104,-1,0),         # close the outer side yards: one side-yard corridor per house
          ("fence",91.5,95.5,91.5,107.8,-1,0),("fence",103.5,95.5,103.5,107.8,-1,0), # front yards walled off from the stem road
-         ("fence",67.5,130.5,91.5,130.5,1.5,3),("fence",127.5,130.5,103.5,130.5,1.5,3),  # back fences: one door each, on the outside
+         ("fence",67.5,130.5,91.5,130.5,8,3),("fence",127.5,130.5,103.5,130.5,8,3),      # back fences: one door each, set in from the edge so it does not line up with the next door
          ("fence",79,130.5,79,135.5,-1,0),("fence",116,130.5,116,135.5,-1,0),     # 100/114 Willow: the strip by the stem is a dead-end nook
          ("fence",84,145,91.5,145,-1,0),("fence",111,145,103.5,145,-1,0),
          ("fence",79,140,79,157,-1,0),("fence",116,140,116,157,-1,0),             # join 100 to 102 and 114 to 112
          ("fence",43.5,150,78,150,24,3),("fence",151.5,150,117,150,24,3),          # tall fence + door into each side lawn (was see-over pickets)
          ("fence",70.6,179.9,70.6,172,-1,0),("fence",122.4,183.6,122.4,172,-1,0), # site houses joined to the side-lawn fences
-         ("fence",70.6,179.9,86.9,182.6,8,3),("fence",122.4,183.6,108.1,182.6,6.5,3),  # "short" door from the cul-de-sac into each site
-         ("fence",86.9,182.6,85.6,196.7,-1,0),("fence",108.1,182.6,109.4,196.7,-1,0),
+         ("fence",70.6,179.9,84,182.12,8,3),("fence",122.4,183.6,111,182.8,6.5,3),  # "short" door from the cul-de-sac into each site
+         # These two fences used to start 3 m closer to the island and left only a 1.3 m slit
+         # between fence and hedge: the one way from the ring road to the defenders' lawn.
+         # Pulled back, each top corner of the ring road is now a real 3.5 m doorway.
+         ("fence",84,182.12,84.1,191.5,-1,0),("fence",111,182.8,110.9,191.5,-1,0),
          ("fence",77.3,192.2,85.6,196.7,-1,0),("fence",117.7,192.2,109.4,196.7,-1,0),  # site hedges joined to 106/108
          # --- stuff in every room, so there are corners to hold inside them ---
          ("shed",79,124,0,6,3),("shed",116,125,0,6,3),                            # Birch backyards: a shed each, splits the room in two
@@ -75,8 +78,29 @@ MAPS=[
          # --- narrow paths (26 Nov): townhome rows and RVs turn lawns into alleys ---
          ("townhome",53.5,161,90,21.4,19),("townhome",141.5,161,90,21.4,19),       # side lawns -> townhome blocks with a 7 m alley beside 102 / 112
          ("townhome",48,194,90,34,9),                                              # townhomes along the back of A: the site is a walled courtyard
-         ("rv",100.5,137,90),("rv",94.5,106,90),                                   # RVs parked on the stem: an S-bend, not a straight road
-         ("rv",148,185,90),("shed",148,213,0,4,3)],                                # RV and a shed in B: big boxes to play around                                                      # parked truck between the cul-de-sac and the defenders' lawn
+         ("rv",100.5,137,90),("rv",92.9,106,90),                                   # RVs parked on the stem: an S-bend, not a straight road
+         ("rv",148,185,90),("shed",148,213,0,4,3),                                 # RV and a shed in B: big boxes to play around
+         # --- no long straight views (26 Nov audit): real maps bend every 25-30 m. The yard
+         #     doors down each side lined up into one 100 m view, so each door gets a shed
+         #     set just past it that you walk around, and the stem gets two hedge walls
+         #     with their gaps on opposite sides. ---
+         ("shed",69.5,140,0,4,3),("shed",125.5,140,0,4,3),                         # behind the back-fence doors of 166/168 Birch
+         ("shed",68.5,159.5,0,4,3),("shed",126.5,159.5,0,4,3),                     # in the alleys beside the townhomes
+         ("shed",64.5,180,0,3,3),("shed",130.5,180,0,3,3),                         # just inside the side doors of A and B
+         ("hedge",94.5,115,103.5,115,-1,0),("hedge",91.5,128,99.5,128,-1,0),       # the stem: pass on the left, then on the right
+         ("hedge",80,79.5,80,95.5,-1,0),("hedge",117,79.5,117,95.5,-1,0),          # the attackers' street ends at the last way out
+         ("hedge",103.5,150,103.5,154.7,-1,0),                                     # the east hedge of the stem runs on past the fire truck
+         ("hedge",84.5,168,88,168,-1,0),("hedge",110.5,168,107,168,-1,0),          # a hedge spur off the island on each side of the ring road
+         ("rv",88,87,90),("rv",107,87,90),
+         # The lawn mouth (between 106 and 108): the hedge that splits the two back yards now
+         # runs down to a cross hedge, a T. Each yard gets its own 3.4 m gate beside its
+         # house, and the truck sits in front of both, so nobody sees from the ring road
+         # into the defenders' lawn (or back) without walking round a corner.
+         # (Each half of the cross hedge is written from the middle out to its house with the
+         #  gate in it, so the game also puts a stepping stone for the bots in each gate.)
+         ("hedge",97.5,196,90.5,196,3,3.4),("hedge",97.5,196,104.5,196,3,3.4),("hedge",97.5,200.5,97.5,196,-1,0),
+         ("hedge",88,163,88,159.8,-1,0),("hedge",107,163,107,159.8,-1,0),          # the island's south corners stick out 3 m: no view from one garage across to the other
+         ("shed",59.75,203.4,45,3,3),("shed",135.25,203.4,45,3,3)],                # a shed just inside each site's lawn gate, like the other doors                                        # and two RVs split it into three bays
   note="Up the side yards of 166 & 168 Birch or straight up the Willow Ct stem, into the cul-de-sac."),
  dict(name="3. Schoolyard",
   area=U(L("Birch Ln",154),L("Birch Ln",156),L("Cedar Ln",122),L("Cedar Ln",124),road("Birch Ln",465,510),road("Cedar Ln",465,510),
