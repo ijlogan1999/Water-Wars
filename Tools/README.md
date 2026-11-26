@@ -18,11 +18,24 @@ Then go back to Unity and press Play.
 ## Maps drawn from a blank page (the remade maps)
 
 The first six maps were cut out of the real-size neighborhood, and the audit showed
-that is why they played like fields. The remade maps are not cut out of anything.
-Each one is a drawing made of letters in `newmaps.py`: one letter is one 2 m square,
-north is at the top, everything starts solid and the paths are carved out. The top
-of `blueprint.py` lists the letters (houses, shut and open garages, hedges, board
-fences, sheds, crates, vehicles, a treehouse, closed yards, the spawns and the sites).
+that is why they played like fields. All six have now been redrawn from a blank page
+(they keep their names). Each one is a drawing made of letters in `newmaps.py`: one
+letter is one 2 m square, north is at the top, everything starts solid and the paths
+are carved out. The top of `blueprint.py` lists the letters (houses, shut and open
+garages, hedges, trees, board fences, sheds, crates, vehicles, a treehouse, a party
+tent, a pool, water you can see across, school blocks, portables, bleachers, a bus,
+closed yards, the spawns and the sites).
+
+What made the six meet the spec, so the next map can too: about 104 x 108 m with
+about half of it floor, so most lanes pass through rooms (yards, clearings) of about
+16 x 16 m; each site a room with three doors (one 6 m, two 4 m) kept apart, with
+nothing standing within 3 squares of a door; doors on opposite sides of a room never
+in line, and a shed or trees on any straight line over 40 m; walls of houses, 4.2 m
+hedges or 6 m trees rather than 3 m fences.
+
+`maps5.py` still holds the old cut-out maps and the Maple Park neighborhood. They
+are no longer what the game plays, but export_cs.py still reads them, so leave them
+until the remade maps have been played and kept.
 
 `python3 blueprint.py "Willow Court"` checks a drawing (the outside ring is solid,
 every square of floor can be reached, bots get a stepping stone everywhere, no gap
