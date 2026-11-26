@@ -807,6 +807,8 @@ namespace WaterWars
         static readonly Color StandOrange = new Color(0.95f, 0.6f, 0.25f);
         static readonly Color TentPink = new Color(1f, 0.55f, 0.7f);
         static readonly Color WaterBlue = new Color(0.3f, 0.55f, 0.8f);
+        static readonly Color SchoolBrick = new Color(0.78f, 0.6f, 0.45f);
+        const float SchoolHeight = 7f;
 
         static Vector2 Dir(float degrees)
         {
@@ -857,6 +859,35 @@ namespace WaterWars
                     case Prop.Kind.Bush:
                         BoxProp(parent, "Hedge Block", v, HedgeHeight, HedgeGreen);
                         break;
+                    case Prop.Kind.School:
+                    {
+                        // A block of the school: brick, flat roof, one long band of windows.
+                        var t = BoxProp(parent, "School Building", v, SchoolHeight, SchoolBrick, 0.2f, new Color(0.35f, 0.35f, 0.38f), true);
+                        Shapes.Box("School Windows", t.TransformPoint(new Vector3(0f, 2.3f, 0f)),
+                            new Vector3(v[3] + 0.08f, 1.3f, v[4] + 0.08f), new Color(0.55f, 0.7f, 0.8f), t, false);
+                        break;
+                    }
+                    case Prop.Kind.Bleachers:
+                    {
+                        // Two wide steps. You can shoot over them, duck behind them, or hop up on them.
+                        var t = Pivot(parent, "Bleachers");
+                        Shapes.BoxOnGround("Bleacher Step", new Vector3(0f, 0f, -v[4] * 0.25f), new Vector3(v[3], 0.55f, v[4] * 0.5f), ChainLink, t);
+                        Shapes.BoxOnGround("Bleacher Step", new Vector3(0f, 0f, v[4] * 0.25f), new Vector3(v[3], 1.1f, v[4] * 0.5f), ChainLink, t);
+                        t.position = W(new Vector2(v[0], v[1]));
+                        t.rotation = Facing(new Vector2(-Mathf.Sin(v[2] * Mathf.Deg2Rad), Mathf.Cos(v[2] * Mathf.Deg2Rad)));
+                        break;
+                    }
+                    case Prop.Kind.Bus:
+                    {
+                        // A parked school bus: 10 m long and taller than any kid. Blocks the view.
+                        var bus = Pivot(parent, "School Bus");
+                        Shapes.BoxOnGround("Bus Body", new Vector3(0f, 0.5f, 0f), new Vector3(2.5f, 2.5f, 10f), new Color(0.98f, 0.75f, 0.1f), bus);
+                        Shapes.Box("Bus Windows", new Vector3(0f, 2.2f, 0f), new Vector3(2.55f, 0.7f, 9.2f), new Color(0.25f, 0.3f, 0.38f), bus, false);
+                        Shapes.Box("Bus Stripe", new Vector3(0f, 1.3f, 0f), new Vector3(2.55f, 0.15f, 10.05f), new Color(0.1f, 0.1f, 0.1f), bus, false);
+                        Shapes.BoxOnGround("Bus Wheels", Vector3.zero, new Vector3(2.55f, 0.6f, 8.6f), new Color(0.1f, 0.1f, 0.1f), bus, false);
+                        Place(bus, new Vector2(v[0], v[1]), Dir(v[2]));
+                        break;
+                    }
                     case Prop.Kind.Thicket:
                     {
                         // A clump of trees with brush so thick you can't push through or see through.

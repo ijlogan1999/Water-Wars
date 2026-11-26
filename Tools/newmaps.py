@@ -10,6 +10,7 @@
 #   X  hedge    T  trees    - | +  board fence    o  crates (shoot over)    V  vehicle
 #   w  above-ground pool (shoot over)    p  floor under a party tent    s  sand
 #   ~  water: nobody walks in, but you see and shoot across it
+#   Q  school block    P  portable classroom    b  bleachers (shoot over)    Y  school bus
 #   _  a closed yard nobody can get into
 #
 # The number after each row is only a label (row 00 is the north edge), so a row is easy
@@ -264,6 +265,67 @@ TTTT;;;;;..........SSTTTT......TTT.......TTTTTTTTTTTTT  48
 TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT  49
 TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT  50
 TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT  51
+""",
+      extra=[]),
+ dict(name="Schoolyard", start="the bus loop",
+      A="the back doors by the loading dock", B="the bleachers by the field",
+      note="From the bus loop you go through the breezeway into the school's courtyard, or round either "
+           "end of the building: past the portable classrooms on the west, along the field on the east.",
+      #           11111111112222222222333333333344444444445555
+      # 012345678901234567890123456789012345678901234567890123
+      grid="""
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  00
+X_XXXXXXXXXXXXXX::::::::::::::::::::::XXXXXXXXXXXXXX_X  01
+X_X::::::::::::::VVV::::::1:::::::VVV::::::::::::::X_X  02
+X_X::::::::::::::YYYYY::::::::::YYYYY::::::::::::::X_X  03
+X_X......XXXXXXX::::::::::::::::::::::XXXXXXX......X_X  04
+X_X......X_____X::::::::YYYYY:::::::::X_____X......X_X  05
+X_X......X_____X,,,,,,,,,,,,,,,,,,,,,,X_____X......X_X  06
+X_X......QQQQQQQQQQQQQQQQ,,,,QQQQQQQQQQQQQQQQ......X_X  07
+X_XPPPP..QQQQQQQQQQQQQQQQ,,,,QQQQQQQQQQQQQQQQ..SS..X_X  08
+X_XPPPP..QQQQQQQQQQQQQQQQ,,,,QQQQQQQQQQQQQQQQ..SS..X_X  09
+X_X......QQQQQQQQQQQQQQQQ,,,,QQQQQQQQQQQQQQQQ......X_X  10
+X_X......QQQQQQQQQQQQQQQQ,,,,QQQQQQQQQQQQQQQQ......X_X  11
+X_X......QQQQQQQQQQQQQQQQ,,,,QQQQQQQQQQQQQQQQ......X_X  12
+X_X..PPPPQQQQQQQQQQQQQQQQ,,,,QQQQQQQQQQQQQQQQTT....X_X  13
+X_X..PPPPQQQQQQQQQQQQQQQQ,,,,QQQQQQQQQQQQQQQQTT....X_X  14
+X_X......QQQQQQQQQQQQQQQQ,,,,QQQQQQQQQQQQQQQQ......X_X  15
+X_X......QQQQQQQQQQQQQQQQ,,,,QQQQQQQQQQQQQQQQ......X_X  16
+X_X......QQQQQQQQQQQQQQQQ,,,,QQQQQQQQQQQQQQQQ......X_X  17
+X_XPPPP..QQQQQQQQQQQQQQQQ,,,,QQQQQQQQQQQQQQQQ....TTX_X  18
+X_XPPPP..QQQQQQQQQQQQQQQQ,,,,QQQQQQQQQQQQQQQQ....TTX_X  19
+X_X......TT::::::::X,,,,,,,,,,,,,,X........TT......X_X  20
+X_X......TT:o::::::X,,,,,,,,,,,oo,X........TT......X_X  21
+X_X..PPPPTT::::::::,,,,,,TTTT,,,,,,........TTSS....X_X  22
+X_X..PPPPTT::::::::,,,,,,TTTT,,,,,,........TTSS....X_X  23
+X_X......TT:::PP:::X,,,,,TTTT,,,,,X...TT...TT......X_X  24
+X_X......,,:::PP:::X,,,,,TTTT,,,,,X...TT...,,......X_X  25
+X_X......,,::::::::X,,,,,,,,,,,,,,X........,,......X_X  26
+X_X......TT::::::::X,SS,,,,,,,,,,,X.....SS.TT......X_X  27
+X_X......TT::::::::X,,,,,,,,,,,,,,X........TT......X_X  28
+X_XTT,,TTTTTT,,TTTTTTT,,TTTTTTTTTTTTTTT,,TTTTTT,,TTX_X  29
+X_X......TT........X::::::::::::::X........TT......X_X  30
+X_X......TT........Xo:::::::::::::X........TT......X_X  31
+X_X......TT........Xo:::::::::::::,........TT......X_X  32
+X_X..SS..TT..PPP...X::PPPP::::::::,...PPP..TT..TT..X_X  33
+X_X..SS..TT..PPP...X::PPPP:PPPP:::X...PPP..TT..TT..X_X  34
+X_X......TT........,:::::::PPPP:::X........TT......X_X  35
+X_X......TT........,::::::::::::::X........TT......X_X  36
+X_X......TT........X::::::::::::SSX........TT......X_X  37
+X_X......TT........X::::::::::::::X........TT......X_X  38
+X_XX...XXXXXXXXX,,XXXXXXXXXXX,,XXXXX,,XXXXXXXXX...XX_X  39
+X_X,,,,,QQQQ,,,X,,XXXXX........XXXXX,,X.SS.........X_X  40
+X_X,,,,,QQQQ,,,X,,,,,,,........,,,,,,,X.SS.........X_X  41
+X_X,,,,,,,,,,,,X,,,,,,,...SS...,,,,,,,X....bbbb....X_X  42
+X_X,,,,,,VVVV,,X,,XXXXX...SS...XXXXX,,X............X_X  43
+X_X,,A,,,,,,,,,,,,X___X........X___X,,,........B...X_X  44
+X_X,,,,,,,,,,,,,,,X___X...2....X___X,,,............X_X  45
+X_XSS,,,,,,,oo,XXXX___X.oo.....X___XXXX.........oo.X_X  46
+X__SS,,,,,,,,,,X______X........X______X............X_X  47
+X___XXXXX,,XXXXXXXXXXXX,,XXXX,,XXXXXXXXXXXX,,XXXXXXX_X  48
+X_______X,,,,,,,,,,,,,,,,X__X,,,,,,,,,,,,,,,,X_______X  49
+X_______X,,,,,,,,,,,,,,,,X__X,,,,,,,,,,,,,,,,X_______X  50
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  51
 """,
       extra=[]),
 ]

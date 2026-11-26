@@ -25,7 +25,9 @@
 #            | runs north-south, + is a corner or a T
 #     o  crates, 1.3 m: you can shoot over them      w  above-ground pool, 1.2 m: the same
 #     V  a parked vehicle: 2 in a row is a car (you can see over it), 3 a van,
-#        4 a box truck, 5 a motorhome
+#        4 a box truck, 5 a motorhome                Y  a school bus (5 in a row)
+#     Q  a block of the school (flat roof, 7 m)     P  portable classroom (3.2 m)
+#     b  bleachers, 1.1 m: you can shoot over them
 #     ~  water (a pond, a creek): nobody walks in, but you see and shoot across it
 #     _  a closed yard: grass and a tree nobody can get to. It must be walled in.
 #
@@ -44,11 +46,12 @@ GROUND = {'.': None, ',': 0, ':': 1, ';': 2, 's': 3}  # paint number, None = gra
 MARKS = {'1': 'att', '2': 'dfn', 'A': 'A', 'B': 'B'}
 RAMP = {'>': 0, '^': 90, '<': 180, 'v': 270}
 HOUSES = {**{c: 8.8 for c in 'HIJK'}, **{c: 5.7 for c in 'hijk'}}
-BOXES = {'G': 'lockup', 'S': 'shed', 'X': 'bush', 'T': 'thicket', 'o': 'crate', '_': 'yard', 'w': 'pool', '~': 'water'}
+BOXES = {'G': 'lockup', 'S': 'shed', 'X': 'bush', 'T': 'thicket', 'o': 'crate', '_': 'yard', 'w': 'pool', '~': 'water',
+         'Q': 'school', 'P': 'portable', 'b': 'bleachers'}
 FENCE = '-|+'
 VEHICLES = {2: 'car', 3: 'van', 4: 'truck', 5: 'rv'}
 WALK = set(GROUND) | set(MARKS) | set(RAMP) | {'g', 'p'}
-KNOWN = WALK | set(HOUSES) | set(BOXES) | set(FENCE) | {'V'}
+KNOWN = WALK | set(HOUSES) | set(BOXES) | set(FENCE) | {'V', 'Y'}
 N, E, S, W = (0, -1), (1, 0), (0, 1), (-1, 0)         # (column, row) steps; row 0 is the north edge
 
 
@@ -163,15 +166,18 @@ def compile(bp, origin=(0.0, 0.0)):
     # ---- plain boxes -------------------------------------------------------------------
     for ch, c, r, w, h in rectangles(rows, set(BOXES)):
         x, y, sx, sy = box(c, r, w, h)
-        if ch == 'G':      # the shut door faces the floor; a box prop's front is south at angle 0
+        if ch in 'Gb':     # the shut door (or the bleachers' low step) faces the floor; a box prop's front is south at angle 0
             f = floor_along(c, r, w, h); a = max(f, key=lambda k: f[k])
-            props.append(('lockup', x, y, {270: 0, 0: 90, 90: 180, 180: 270}[a], sx if a in (90, 270) else sy, sy if a in (90, 270) else sx))
+            props.append((BOXES[ch], x, y, {270: 0, 0: 90, 90: 180, 180: 270}[a], sx if a in (90, 270) else sy, sy if a in (90, 270) else sx))
         else: props.append((BOXES[ch], x, y, 0, sx, sy))
     # ---- parked vehicles ---------------------------------------------------------------
     for ch, c, r, w, h in rectangles(rows, 'V'):
         n = max(w, h)
         if min(w, h) != 1 or n not in VEHICLES: raise Problem('%s: row %d col %d: a vehicle is 2 to 5 squares in one line, this is %d x %d' % (name, r, c, w, h))
         x, y, _, _ = box(c, r, w, h); props.append((VEHICLES[n], x, y, 0 if w > 1 else 90))
+    for ch, c, r, w, h in rectangles(rows, 'Y'):
+        if (min(w, h), max(w, h)) != (1, 5): raise Problem('%s: row %d col %d: a school bus is 5 squares in one line, this is %d x %d' % (name, r, c, w, h))
+        x, y, _, _ = box(c, r, w, h); props.append(('bus', x, y, 0 if w > 1 else 90))
     # ---- open garages --------------------------------------------------------------------
     for ch, c, r, w, h in rectangles(rows, 'g'):
         if (w, h) not in ((3, 4), (4, 3)): raise Problem('%s: row %d col %d: an open garage is 3 x 4 squares, this is %d x %d' % (name, r, c, w, h))
@@ -232,7 +238,7 @@ def compile(bp, origin=(0.0, 0.0)):
 # ---------------------------------------------------------------------------------------
 # A picture of the drawing
 # ---------------------------------------------------------------------------------------
-COLORS = {'.': '#9fce7a', ',': '#d9d5cc', ':': '#77777c', ';': '#c9a777', 's': '#ead9a0', 'g': '#f1ede4', '_': '#b9dc9a', 'w': '#69bdf0', '~': '#3f86c9',
+COLORS = {'.': '#9fce7a', ',': '#d9d5cc', ':': '#77777c', ';': '#c9a777', 's': '#ead9a0', 'g': '#f1ede4', '_': '#b9dc9a', 'w': '#69bdf0', '~': '#3f86c9', 'Q': '#a86a4c', 'P': '#d9b26f', 'b': '#b9bdc4', 'Y': '#f2b90f',
           'G': '#8d8d8a', 'S': '#6f8266', 'X': '#2f6b2a', 'T': '#1f4f1c', 'o': '#b08556', 'V': '#3b5f9c',
           '-': '#7a5230', '|': '#7a5230', '+': '#7a5230'}
 COLORS.update({c: '#b5654b' for c in 'HIJK'}); COLORS.update({c: '#d9a28c' for c in 'hijk'})
@@ -249,7 +255,7 @@ def draw(bp, path, mp=None):
     for p in mp['props']:
         if p[0] == 'paint': ax.add_patch(Rectangle((p[1] - p[3] / 2, p[2] - p[4] / 2), p[3], p[4], fc=[COLORS[','], COLORS[':'], COLORS[';'], COLORS['s']][int(p[5])], ec='none'))
     shade = {'house': None, 'lockup': COLORS['G'], 'shed': COLORS['S'], 'bush': COLORS['X'], 'thicket': COLORS['T'], 'crate': COLORS['o'],
-             'yard': COLORS['_'], 'pool': COLORS['w'], 'water': COLORS['~'], 'fence': COLORS['-'], 'hedge': COLORS['X'], 'garage': '#55555a', 'treehouse': '#7a5230',
+             'yard': COLORS['_'], 'pool': COLORS['w'], 'water': COLORS['~'], 'school': COLORS['Q'], 'bleachers': COLORS['b'], 'bus': COLORS['Y'], 'fence': COLORS['-'], 'hedge': COLORS['X'], 'garage': '#55555a', 'treehouse': '#7a5230',
              'car': '#6f8fd0', 'van': COLORS['V'], 'truck': COLORS['V'], 'rv': COLORS['V'], 'stand': '#e67e22', 'tent': '#ff6fa8',
              'portable': '#d9b26f', 'townhome': '#b5838d', 'tree': '#2e7d32'}
     for p in mp['props']:
@@ -276,7 +282,8 @@ def draw(bp, path, mp=None):
            ('trees', COLORS['T']), ('board fence', COLORS['-']), ('shed', COLORS['S']), ('crates (shoot over)', COLORS['o']),
            ('truck or van', COLORS['V']), ('car (see over)', '#6f8fd0'), ('closed yard', COLORS['_']), ('street', COLORS[':']),
            ('pavement', COLORS[',']), ('dirt', COLORS[';']), ('pool (see over)', COLORS['w']), ('tent roof', '#ff9cc4'),
-           ('water (see across)', COLORS['~']), ('sand', COLORS['s'])]
+           ('water (see across)', COLORS['~']), ('sand', COLORS['s']), ('school', COLORS['Q']), ('portable classroom', COLORS['P']),
+           ('bleachers (shoot over)', COLORS['b']), ('school bus', COLORS['Y'])]
     ax.legend(handles=[Patch(fc=c, ec='#444', lw=0.4, label=t) for t, c in key], loc='upper center', bbox_to_anchor=(0.5, -0.03),
               ncol=7, fontsize=6.5, frameon=False, handlelength=1.2, columnspacing=1.0)
     fig.tight_layout(); fig.savefig(path, dpi=110); plt.close(fig)
