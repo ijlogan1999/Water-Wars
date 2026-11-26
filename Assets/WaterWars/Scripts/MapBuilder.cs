@@ -90,9 +90,20 @@ namespace WaterWars
         static readonly Color Verge = new Color(0.5f, 0.7f, 0.36f);
         static readonly Color HedgeGreen = new Color(0.2f, 0.42f, 0.18f);
         static readonly Color FenceWood = new Color(0.62f, 0.45f, 0.3f);
-        /// Wooden fences and tall hedges are 3 m: a kid's eyes are at 1.6 m and a jump
-        /// adds 1.1 m, so at 3 m you can't jump-peek over them. They are real walls.
-        const float FenceHeight = 3.0f;
+        // ---- How tall things are -------------------------------------------------
+        // The whole neighborhood is built at "kid's eye" scale: a third taller than
+        // real life, the way a fence looks like a wall when you're ten. It also does
+        // a job: in tactical shooters the walls beside a path are about as tall as the
+        // path is wide, and that is what makes a path feel like a path, not a field.
+        // Nothing meant to block the view is under 3 m, because a jumping kid's eyes
+        // reach 2.7 m.
+        const float FenceHeight = 3.0f;     // wooden privacy fences and locked gates
+        const float HedgeHeight = 4.2f;     // tall hedges (in yards, as props, on the map's edge)
+        const float TreeLineHeight = 4.8f;  // the hedge wall where the map meets a park or the woods
+        const float ScreenHeight = 3.2f;    // green construction screens that close off street ends
+        const float HouseTall = 1.35f;      // houses are built this many times taller than the map data says
+        const float GarageHeight = 4.2f;
+        static readonly Color ScreenGreen = new Color(0.16f, 0.36f, 0.26f);
         static readonly Color PicketWhite = new Color(0.93f, 0.92f, 0.88f);
         static readonly Color ChainLink = new Color(0.6f, 0.62f, 0.64f);
         static readonly Color Bark = new Color(0.42f, 0.3f, 0.2f);
@@ -394,7 +405,7 @@ namespace WaterWars
 
             // House (built facing the street, then turned into place).
             var house = Pivot(t, "House " + lot.Address);
-            BuildHouse(house, "House", Vector3.zero, new Vector3(lot.HouseWidth, lot.HouseHeight, lot.HouseDepth), wall);
+            BuildHouse(house, "House", Vector3.zero, new Vector3(lot.HouseWidth, lot.HouseHeight * HouseTall, lot.HouseDepth), wall);
             Place(house, lot.House, lot.In);
 
             if (lot.HasGarage)
@@ -484,8 +495,8 @@ namespace WaterWars
             for (int i = -1; i <= 1; i += 2)
             {
                 Shapes.Box(name + " Window", bottomCenter + new Vector3(i * size.x * 0.28f, 1.7f, face), new Vector3(2f, 1.3f, 0.05f), DarkWindow, root, false);
-                if (size.y > 5f)
-                    Shapes.Box(name + " Window Up", bottomCenter + new Vector3(i * size.x * 0.28f, 4.6f, face), new Vector3(2f, 1.2f, 0.05f), DarkWindow, root, false);
+                if (size.y > 7f)   // two-storey houses get an upstairs window
+                    Shapes.Box(name + " Window Up", bottomCenter + new Vector3(i * size.x * 0.28f, size.y * 0.66f, face), new Vector3(2f, 1.2f, 0.05f), DarkWindow, root, false);
             }
         }
 
@@ -493,20 +504,21 @@ namespace WaterWars
         // With backDoor, there's also a doorway out the back into the yard.
         static void BuildGarage(Transform root, string name, Vector3 bottomCenter, bool backDoor)
         {
-            const float w = 6.6f, d = 8.4f, h = 3.2f, t = 0.25f;
+            const float w = 6.6f, d = 8.4f, h = GarageHeight, t = 0.25f;
+            const float open = 2.6f;   // how tall the doorways are; the wall above them fills the rest
             if (backDoor)
             {
                 float piece = (w - 2.2f) * 0.5f;
                 Shapes.BoxOnGround(name + " Back Wall L", bottomCenter + new Vector3(-w * 0.5f + piece * 0.5f, 0f, d * 0.5f), new Vector3(piece, h, t), GarageGrey, root);
                 Shapes.BoxOnGround(name + " Back Wall R", bottomCenter + new Vector3(w * 0.5f - piece * 0.5f, 0f, d * 0.5f), new Vector3(piece, h, t), GarageGrey, root);
-                Shapes.Box(name + " Back Door Top", bottomCenter + new Vector3(0f, h - 0.4f, d * 0.5f), new Vector3(2.2f, 0.8f, t), GarageGrey, root);
+                Shapes.Box(name + " Back Door Top", bottomCenter + new Vector3(0f, (h + open) * 0.5f, d * 0.5f), new Vector3(2.2f, h - open, t), GarageGrey, root);
             }
             else
                 Shapes.BoxOnGround(name + " Back Wall", bottomCenter + new Vector3(0f, 0f, d * 0.5f), new Vector3(w, h, t), GarageGrey, root);
             Shapes.BoxOnGround(name + " Left Wall", bottomCenter + new Vector3(-w * 0.5f, 0f, 0f), new Vector3(t, h, d), GarageGrey, root);
             Shapes.BoxOnGround(name + " Right Wall", bottomCenter + new Vector3(w * 0.5f, 0f, 0f), new Vector3(t, h, d), GarageGrey, root);
             Shapes.Box(name + " Roof", bottomCenter + new Vector3(0f, h + t * 0.5f, 0f), new Vector3(w + 0.6f, t, d + 0.6f), Roof, root);
-            Shapes.Box(name + " Door", bottomCenter + new Vector3(0f, h - 0.4f, -d * 0.5f), new Vector3(w, 0.8f, 0.15f), PicketWhite, root);
+            Shapes.Box(name + " Door", bottomCenter + new Vector3(0f, (h + open) * 0.5f, -d * 0.5f), new Vector3(w, h - open, 0.15f), PicketWhite, root);
             Shapes.BoxOnGround(name + " Workbench", bottomCenter + new Vector3(-w * 0.5f + 0.8f, 0f, 1.6f), new Vector3(1.2f, 1f, 2.4f), Plank, root);
             Shapes.BoxOnGround(name + " Boxes", bottomCenter + new Vector3(w * 0.5f - 1f, 0f, 0.6f), new Vector3(1.3f, 1.3f, 1.3f), new Color(0.75f, 0.6f, 0.4f), root);
             Shapes.BoxOnGround(name + " Bike", bottomCenter + new Vector3(w * 0.5f - 0.6f, 0f, 2.8f), new Vector3(0.3f, 1f, 1.8f), new Color(0.2f, 0.5f, 0.9f), root, false);
@@ -588,7 +600,7 @@ namespace WaterWars
                 switch ((int)f[i + 4])
                 {
                     case 1: Wall(parent, "Picket Fence", a, b, 1.1f, 0.15f, PicketWhite); break;
-                    case 2: Wall(parent, "Hedge", a, b, 1.7f, 0.9f, HedgeGreen); break;
+                    case 2: Wall(parent, "Hedge", a, b, HedgeHeight, 0.9f, HedgeGreen); break;
                     default: Wall(parent, "Fence", a, b, FenceHeight, 0.2f, FenceWood); break;
                 }
             }
@@ -631,7 +643,10 @@ namespace WaterWars
         }
 
         // =====================================================================
-        // The map's edge: invisible walls, plus something you can SEE there
+        // The map's edge: invisible walls, plus something you can SEE there.
+        // Every edge is closed with something taller than a jumping kid can see
+        // over, so the map has a clear end and you never look out across open
+        // ground you can't reach.
         // =====================================================================
         static void BuildEdges(Transform root, MapDef def)
         {
@@ -651,11 +666,25 @@ namespace WaterWars
                 switch (e.What)
                 {
                     case Edge.Kind.Street:
-                        if (len > 17f) ParkedCars(parent, e.A + outward * 1.6f, e.B + outward * 1.6f);
-                        else Barricade(parent, e.A + outward * 0.6f, e.B + outward * 0.6f);
+                        if (len > 17f)
+                        {
+                            // Along a street: a tall hedge at the curb, with cars parked behind it.
+                            Wall(parent, "Hedge", e.A + outward * 0.5f, e.B + outward * 0.5f, HedgeHeight, 0.9f, HedgeGreen);
+                            ParkedCars(parent, e.A + outward * 2.2f, e.B + outward * 2.2f);
+                        }
+                        else
+                        {
+                            // Across a street: sawhorses, then a pocket closed off by green road-work
+                            // screens, deep enough to hold the crashed cars or parked truck out there.
+                            Barricade(parent, e.A + outward * 0.6f, e.B + outward * 0.6f);
+                            Vector2 backA = e.A + outward * 10f, backB = e.B + outward * 10f;
+                            Wall(parent, "Road Work Screen", backA, backB, ScreenHeight, 0.1f, ScreenGreen, false);
+                            Wall(parent, "Road Work Screen", e.A + outward * 0.5f, backA, ScreenHeight, 0.1f, ScreenGreen, false);
+                            Wall(parent, "Road Work Screen", e.B + outward * 0.5f, backB, ScreenHeight, 0.1f, ScreenGreen, false);
+                        }
                         break;
                     case Edge.Kind.Curb:
-                        Wall(parent, "Hedge", e.A + outward * 0.5f, e.B + outward * 0.5f, 1.6f, 0.9f, HedgeGreen);
+                        Wall(parent, "Hedge", e.A + outward * 0.5f, e.B + outward * 0.5f, HedgeHeight, 0.9f, HedgeGreen);
                         break;
                     case Edge.Kind.Lot:
                         Wall(parent, "Fence", e.A + outward * 0.15f, e.B + outward * 0.15f, FenceHeight, 0.2f, FenceWood);
@@ -663,12 +692,17 @@ namespace WaterWars
                     case Edge.Kind.Park:
                     case Edge.Kind.Verge:
                     case Edge.Kind.Woods:
-                        Wall(parent, "Tall Hedge", e.A + outward * 0.6f, e.B + outward * 0.6f, 2.4f, 1.2f, HedgeGreen);
+                        Wall(parent, "Tall Hedge", e.A + outward * 0.6f, e.B + outward * 0.6f, TreeLineHeight, 1.2f, HedgeGreen);
                         break;
                     case Edge.Kind.School:
-                        Wall(parent, "Chain-Link Fence", e.A + outward * 0.2f, e.B + outward * 0.2f, 2.4f, 0.08f, ChainLink);
+                        // Chain-link with green privacy slats, so you can't see through it.
+                        Wall(parent, "Slatted Chain-Link Fence", e.A + outward * 0.2f, e.B + outward * 0.2f, ScreenHeight, 0.08f, ScreenGreen);
                         break;
-                    // LotFenced / CurbFenced: a real fence is already there.
+                    default:
+                        // LotFenced / CurbFenced: a yard fence is already there, but it may be a low
+                        // picket fence, so a tall hedge grows just behind it.
+                        Wall(parent, "Tall Hedge", e.A + outward * 1.1f, e.B + outward * 1.1f, HedgeHeight, 0.9f, HedgeGreen, false);
+                        break;
                 }
             }
         }
@@ -758,7 +792,7 @@ namespace WaterWars
                         break;
                     }
                     case Prop.Kind.Shed:
-                        BoxProp(parent, "Shed", v, 2.4f, ShedGreen);
+                        BoxProp(parent, "Shed", v, 3.2f, ShedGreen);
                         break;
                     case Prop.Kind.Stand:
                     {
@@ -795,7 +829,7 @@ namespace WaterWars
                             if (e < len - 0.05f) pieces.Add(new[] { a + d * e, b });
                         }
                         foreach (var pc in pieces)
-                            Wall(parent, hedge ? "Tall Hedge" : "Tall Fence", pc[0], pc[1], FenceHeight, hedge ? 0.9f : 0.2f, hedge ? HedgeGreen : FenceWood);
+                            Wall(parent, hedge ? "Tall Hedge" : "Tall Fence", pc[0], pc[1], hedge ? HedgeHeight : FenceHeight, hedge ? 0.9f : 0.2f, hedge ? HedgeGreen : FenceWood);
                         break;
                     }
                     case Prop.Kind.Tree:
@@ -806,7 +840,8 @@ namespace WaterWars
                         // A row of joined two-storey homes: one long solid block that makes
                         // narrow alleys. Each home in the row gets its own color, door and windows.
                         // (BoxProp has already placed the row, so the trim uses TransformPoint.)
-                        var t = BoxProp(parent, "Townhome Row", v, 7f, HouseColors[n % HouseColors.Length], 0.3f, Roof, true);
+                        const float tall = 9f;
+                        var t = BoxProp(parent, "Townhome Row", v, tall, HouseColors[n % HouseColors.Length], 0.3f, Roof, true);
                         int homes = Mathf.Max(1, Mathf.RoundToInt(v[3] / 6f));
                         float unit = v[3] / homes;
                         for (int i = 0; i < homes; i++)
@@ -816,10 +851,10 @@ namespace WaterWars
                             for (int side = -1; side <= 1; side += 2)
                             {
                                 float z = side * (v[4] * 0.5f + 0.03f);
-                                Shapes.Box("Townhome Front", t.TransformPoint(new Vector3(x, 3.5f, z)), new Vector3(unit - 0.2f, 7f, 0.05f), col, t, false);
+                                Shapes.Box("Townhome Front", t.TransformPoint(new Vector3(x, tall * 0.5f, z)), new Vector3(unit - 0.2f, tall, 0.05f), col, t, false);
                                 Shapes.Box("Townhome Door", t.TransformPoint(new Vector3(x - unit * 0.25f, 1.1f, z * 1.01f)), new Vector3(1f, 2.2f, 0.06f), new Color(0.35f, 0.2f, 0.12f), t, false);
                                 Shapes.Box("Townhome Window", t.TransformPoint(new Vector3(x + unit * 0.15f, 1.7f, z * 1.01f)), new Vector3(1.4f, 1.1f, 0.06f), new Color(0.6f, 0.75f, 0.85f), t, false);
-                                Shapes.Box("Townhome Window", t.TransformPoint(new Vector3(x, 5f, z * 1.01f)), new Vector3(2.4f, 1.1f, 0.06f), new Color(0.6f, 0.75f, 0.85f), t, false);
+                                Shapes.Box("Townhome Window", t.TransformPoint(new Vector3(x, 6.2f, z * 1.01f)), new Vector3(2.4f, 1.1f, 0.06f), new Color(0.6f, 0.75f, 0.85f), t, false);
                             }
                         }
                         break;

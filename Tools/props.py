@@ -23,7 +23,7 @@ import math
 from shapely.geometry import Polygon, LineString, box
 
 SIZE = {"car": (4.6, 1.9), "van": (5.2, 2.2), "truck": (8.0, 2.5), "rv": (10.0, 2.6)}
-HEIGHT = {"truck": 3.4, "car": 1.75, "van": 2.4, "portable": 3.2, "shed": 2.4, "stand": 2.4, "tent": 2.7, "fence": 3.0, "hedge": 3.0, "rv": 3.5, "townhome": 7.0}
+HEIGHT = {"truck": 3.4, "car": 1.75, "van": 2.4, "portable": 3.2, "shed": 3.2, "stand": 2.4, "tent": 2.7, "fence": 3.0, "hedge": 4.2, "rv": 3.5, "townhome": 9.0}
 
 def _rect(cx, cy, ux, uy, length, width):
     # rectangle `length` along (ux,uy) and `width` across it

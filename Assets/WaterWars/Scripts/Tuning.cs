@@ -76,6 +76,14 @@ namespace WaterWars
         public const float CrouchHeight = 1.2f;
         public const float DefaultMouseSensitivity = 2f;
 
+        // ---- Camera --------------------------------------------------------
+        // How wide the camera lens is, measured top to bottom, in degrees.
+        // 74 gives about 106 degrees side to side on a widescreen, the same as
+        // CS2 (Valorant is 103). It was 85 (117 side to side): a lens that wide
+        // makes fences look shorter and yards look bigger than they are.
+        // Bigger = see more but everything looks smaller and farther away.
+        public const float FieldOfView = 74f;
+
         // ---- Bots ----------------------------------------------------------
         public const float BotSightRange = 45f;
         public const float BotReactionMin = 0.2f;   // Seconds before a bot shoots after seeing you.
