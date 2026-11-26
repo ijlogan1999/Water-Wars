@@ -5,7 +5,10 @@
 #   ("car",  x, y, angle)            car, long side pointing `angle` degrees (0 = east)
 #   ("van",  x, y, angle)            van, same idea, bigger
 #   ("truck", x, y, angle)           box truck, bigger still (blocks the view)
-#   ("portable"|"shed"|"stand"|"tent", x, y, angle, w, d)
+#   ("rv", x, y, angle)              motorhome (RV), 10 m long, blocks the view
+#   ("portable"|"shed"|"stand"|"tent"|"townhome", x, y, angle, w, d)
+#                                    townhome = a row of joined two-storey homes (solid,
+#                                    7 m tall): a long block that makes narrow alleys
 #                                    box w wide (east-west at angle 0) and d deep
 #   ("fence"|"hedge", x1, y1, x2, y2, gap_at, gap_w)
 #                                    tall fence or hedge from (x1,y1) to (x2,y2), with a
@@ -19,8 +22,8 @@
 import math
 from shapely.geometry import Polygon, LineString, box
 
-SIZE = {"car": (4.6, 1.9), "van": (5.2, 2.2), "truck": (8.0, 2.5)}
-HEIGHT = {"truck": 3.4, "car": 1.75, "van": 2.4, "portable": 3.2, "shed": 2.4, "stand": 2.4, "tent": 2.7, "fence": 2.2, "hedge": 2.2}
+SIZE = {"car": (4.6, 1.9), "van": (5.2, 2.2), "truck": (8.0, 2.5), "rv": (10.0, 2.6)}
+HEIGHT = {"truck": 3.4, "car": 1.75, "van": 2.4, "portable": 3.2, "shed": 2.4, "stand": 2.4, "tent": 2.7, "fence": 3.0, "hedge": 3.0, "rv": 3.5, "townhome": 7.0}
 
 def _rect(cx, cy, ux, uy, length, width):
     # rectangle `length` along (ux,uy) and `width` across it
@@ -49,10 +52,10 @@ def gate_center(p):
 def footprint(p):
     """Solid shapes a kid bumps into, seen from above."""
     k = p[0]
-    if k in ("car", "van", "truck"):
+    if k in ("car", "van", "truck", "rv"):
         _, x, y, a = p; l, w = SIZE[k]; r = math.radians(a)
         return [_rect(x, y, math.cos(r), math.sin(r), l, w)]
-    if k in ("portable", "shed", "stand"):
+    if k in ("portable", "shed", "stand", "townhome"):
         _, x, y, a, w, d = p; r = math.radians(a)
         return [_rect(x, y, math.cos(r), math.sin(r), w, d)]
     if k == "tent":   # only the four poles block you; the roof is overhead

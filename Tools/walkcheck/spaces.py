@@ -19,6 +19,8 @@ def classify(mp):
     free = area.difference(obst)
     xs = np.arange(bx[0], bx[2], STEP); ys = np.arange(bx[1], bx[3], STEP)
     X, Y = np.meshgrid(xs, ys); ok = shapely.contains_xy(free, X, Y)
+    lab, k = ndimage.label(ok)                                   # only ground you can actually reach
+    if k > 1: ok = lab == np.argmax(np.bincount(lab.ravel())[1:]) + 1
     edt = ndimage.distance_transform_edt(ok) * STEP          # distance to nearest solid thing
     width = np.zeros_like(edt)
     for r in np.arange(0.5, 30, 0.5):

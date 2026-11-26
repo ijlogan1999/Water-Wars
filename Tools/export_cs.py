@@ -229,7 +229,7 @@ for i,m in enumerate(MAPS):
         ", ".join(sites),
         ", ".join('new Roadblock(Roadblock.Kind.%s,%s,%s)'%(kd,arr(p),arr(dd)) for p,dd,kd in rbs),
         ", ".join('new Edge(%s,%s,Edge.Kind.%s)'%(arr(p),arr(q),c.replace("|F","Fenced")) for p,q,c,_ in pcs),
-        ", ".join('new Prop(Prop.Kind.%s,%s)'%(c[0].title(),arr(c[1:])) for c in cover),
+        ", ".join('new Prop(Prop.Kind.%s,%s)'%({'rv':'RV'}.get(c[0],c[0].title()),arr(c[1:])) for c in cover),
         ",".join(map(str,lots)),",".join(map(str,fen))))
     print(name,len(lots),"lots",len(fen),"fences",len(pcs),"edges",len(rbs),"blocks",[c for _,_,c,_ in pcs])
 park="".join("%s,%s,%s,"%(F(x),F(y),F(r)) for x,y,r in D["PARKTREES"])

@@ -114,7 +114,7 @@ namespace WaterWars
     ///   Tree:                          x, y, radius
     public class Prop
     {
-        public enum Kind { Car, Van, Truck, Portable, Shed, Stand, Tent, Fence, Hedge, Tree }
+        public enum Kind { Car, Van, Truck, Portable, Shed, Stand, Tent, Fence, Hedge, Tree, Townhome, RV }
         public readonly Kind What;
         public readonly float[] V;
         public Prop(Kind what, float[] v) { What = what; V = v; }

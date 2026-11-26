@@ -24,6 +24,9 @@ def grids(mp):
     X, Y = np.meshgrid(xs, ys)
     clear = shapely.contains_xy(area, X, Y) & ~shapely.contains_xy(ob, X, Y)
     stand = clear & ~shapely.contains_xy(ob.buffer(R_KID), X, Y)
+    from scipy import ndimage                                    # only ground you can actually reach
+    lab, k = ndimage.label(stand)
+    if k > 1: stand = lab == np.argmax(np.bincount(lab.ravel())[1:]) + 1
     return area, bx, clear, stand
 
 def expose(mp):

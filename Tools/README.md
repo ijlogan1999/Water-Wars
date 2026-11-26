@@ -34,7 +34,9 @@ Playbook's targets: attackers 20-25 s to a site, defenders 5-10 s, defenders
 
 Each map in `maps5.py` has a `cover=[...]` list: parked cars, vans, trucks,
 portable classrooms, sheds, a snack stand, party tents, extra tall fences and
-hedges (with or without a gate), and trees. `props.py` explains the numbers.
+hedges (with or without a gate), trees, townhome rows (long solid blocks that make
+alleys) and RVs. `props.py` explains the numbers. Wooden fences and tall hedges are
+3 m high in the game, so a jumping kid (eyes at 2.7 m) cannot peek over them.
 A new fence or hedge replaces any old neighborhood fence lying on the same line,
 so you can turn a low picket fence into a tall one or add a gate. The game builds
 the same props (`MapBuilder.BuildProps`).

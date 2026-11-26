@@ -39,20 +39,18 @@ MAPS=[
   area=U(box(67.5,79.5,127.5,150),L("Willow Ct",102),L("Willow Ct",104),L("Willow Ct",106),L("Willow Ct",108),L("Willow Ct",110),L("Willow Ct",112),bulb),
   att=(97.5,87),dfn=(97.5,208),A=(62,195,"104 Willow Ct garage"),B=(132,195,"110 Willow Ct treehouse"),mid=(97.5,172,"cul-de-sac"),
   cover=[("truck",97.5,120,70),                                                     # breaks the long view down the Willow Ct stem
-         ("van",97.5,172,0),("tree",91,177,4),("tree",104,166,4),                   # broken-down van + trees on the cul-de-sac island: mid has corners
+         ("tree",91,177,4),("tree",104,166,4),                                       # trees on the cul-de-sac island
          ("fence",103.5,108,103.5,130.5,11.3,2.5),                                   # low picket -> tall fence (gate kept): right yard is its own lane
          # --- corridors and rooms (25 Nov) ---
          ("hedge",67.5,95.5,80,95.5,-1,0),("hedge",85,95.5,91.5,95.5,-1,0),          # curb hedges along Birch Ln: three ways out of spawn
          ("hedge",103.5,95.5,112,95.5,-1,0),("hedge",117,95.5,127.5,95.5,-1,0),
          ("hedge",91.5,131,91.5,150,8,3),("hedge",103.5,131,103.5,150,8,3),          # the top of the stem is a corridor, with a side door each way
-         ("hedge",92.5,167,102.5,167,-1,0),("hedge",92.5,177,102.5,177,-1,0),        # planter box on the cul-de-sac island:
-         ("hedge",92.5,167,92.5,177,-1,0),("hedge",102.5,167,102.5,177,-1,0),        #   mid becomes a ring you fight around
-         ("fence",43.5,161,64,161,-1,0),("fence",131,161,151.5,161,-1,0),            # garden fences split the side lawns into two rooms
-         ("fence",43.5,172,82.5,172,8,3),("hedge",151.5,172,112.5,172,8,3),          # gates from the side lawns up into the site rooms
+         ("hedge",88,163,107,163,-1,0),("hedge",88,181,107,181,-1,0),              # big hedge-walled island in the cul-de-sac:
+         ("hedge",88,163,88,181,-1,0),("hedge",107,163,107,181,-1,0),              #   mid is a 7-8 m ring road you fight around
+                  ("fence",43.5,172,82.5,172,20,3),("hedge",151.5,172,112.5,172,20,3),        # gates from the side alleys up into the site rooms
          ("hedge",52,217.5,77.3,192.2,14,3),("hedge",143,217.5,117.7,192.2,14,3),     # tall hedges wall the sites off from the defenders' lawn (one gate each)
-         ("shed",53,200,0,4,4),("shed",137,186,0,4,4),                               # sheds inside each site room: something to plant behind
-         ("shed",52,183,0,5,3),("shed",145,180,0,5,3),                               # more yard clutter so the site rooms aren't bare lawns
-         ("shed",61,194,0,3,3),("shed",134,196,0,3,3),
+         ("shed",137,186,0,4,4),                               # sheds inside each site room: something to plant behind
+                  ("shed",61,194,0,3,3),("shed",134,196,0,3,3),
          ("truck",97.5,189,0),
          # --- walled yards (25 Nov): tall fences join house to house, so each yard is a
          #     room and its doors are the only ways in. Fences may run into a house. ---
@@ -70,12 +68,15 @@ MAPS=[
          # --- stuff in every room, so there are corners to hold inside them ---
          ("shed",79,124,0,6,3),("shed",116,125,0,6,3),                            # Birch backyards: a shed each, splits the room in two
          ("stand",73,116,90,4,2),("stand",122,116,90,4,2),                         # woodpile by the back door
-         ("shed",50,155,0,3,3),("shed",60,167,0,5,2.5),("shed",145,155,0,3,3),("shed",135,167,0,5,2.5),  # side lawns
-         ("car",87,163,80),("car",108,163,100),                       # parked cars around the cul-de-sac ring
-         ("shed",72,206,45,4,3),("shed",123,206,-45,4,3),                          # site rooms: one more box near the defender gate
+                           ("shed",72,206,45,4,3),("shed",123,206,-45,4,3),                          # site rooms: one more box near the defender gate
          ("stand",80,201,45,3,2),("stand",115,201,-45,3,2),
-         ("fence",43.5,195,52,195,-1,0),("fence",151.5,195,143,195,-1,0),         # a wall stub at the back of each site: a corner to wait behind
-         ("stand",64,214,0,4,2),("stand",131,214,0,4,2)],                                                      # parked truck between the cul-de-sac and the defenders' lawn
+         ("fence",151.5,195,143,195,-1,0),                                       # a wall stub at the back of B: a corner to wait behind
+         ("stand",64,214,0,4,2),("stand",131,214,0,4,2),
+         # --- narrow paths (26 Nov): townhome rows and RVs turn lawns into alleys ---
+         ("townhome",53.5,161,90,21.4,19),("townhome",141.5,161,90,21.4,19),       # side lawns -> townhome blocks with a 7 m alley beside 102 / 112
+         ("townhome",48,194,90,34,9),                                              # townhomes along the back of A: the site is a walled courtyard
+         ("rv",100.5,137,90),("rv",94.5,106,90),                                   # RVs parked on the stem: an S-bend, not a straight road
+         ("rv",148,185,90),("shed",148,213,0,4,3)],                                # RV and a shed in B: big boxes to play around                                                      # parked truck between the cul-de-sac and the defenders' lawn
   note="Up the side yards of 166 & 168 Birch or straight up the Willow Ct stem, into the cul-de-sac."),
  dict(name="3. Schoolyard",
   area=U(L("Birch Ln",154),L("Birch Ln",156),L("Cedar Ln",122),L("Cedar Ln",124),road("Birch Ln",465,510),road("Cedar Ln",465,510),
@@ -143,7 +144,7 @@ def panel(ax,m,k0=0):
         ax.add_patch(MPoly([q+nrm*s1*7+d*s2*2 for s1,s2 in((-1,-1),(1,-1),(1,1),(-1,1))],fc="#e8452c",ec="k",lw=1,zorder=7))
         r=q+d*10
         ax.text(*r,KINDS[(k0+i)%len(KINDS)],fontsize=6.5,weight="bold",ha="center",va="center",zorder=9,bbox=dict(fc="#ffd400",ec="k",pad=1.2))
-    PC={"truck":"#5d6d7e","car":"#c0392b","van":"#7d4e2b","portable":"#d9b26f","shed":"#8a9a7a","stand":"#e67e22","tent":"#f5f5f5","fence":"#6b4423","hedge":"#1e6b1e","tree":"#2e7d32"}
+    PC={"truck":"#5d6d7e","car":"#c0392b","van":"#7d4e2b","portable":"#d9b26f","shed":"#8a9a7a","stand":"#e67e22","tent":"#f5f5f5","fence":"#6b4423","hedge":"#1e6b1e","tree":"#2e7d32","townhome":"#b5838d","rv":"#e9e3d0"}
     for p in m.get("cover",[]):
         for g_ in PROPS.footprint(p):
             ax.add_patch(MPoly(list(g_.exterior.coords),fc=PC[p[0]],ec="k",lw=0.6,zorder=7))

@@ -90,6 +90,9 @@ namespace WaterWars
         static readonly Color Verge = new Color(0.5f, 0.7f, 0.36f);
         static readonly Color HedgeGreen = new Color(0.2f, 0.42f, 0.18f);
         static readonly Color FenceWood = new Color(0.62f, 0.45f, 0.3f);
+        /// Wooden fences and tall hedges are 3 m: a kid's eyes are at 1.6 m and a jump
+        /// adds 1.1 m, so at 3 m you can't jump-peek over them. They are real walls.
+        const float FenceHeight = 3.0f;
         static readonly Color PicketWhite = new Color(0.93f, 0.92f, 0.88f);
         static readonly Color ChainLink = new Color(0.6f, 0.62f, 0.64f);
         static readonly Color Bark = new Color(0.42f, 0.3f, 0.2f);
@@ -586,7 +589,7 @@ namespace WaterWars
                 {
                     case 1: Wall(parent, "Picket Fence", a, b, 1.1f, 0.15f, PicketWhite); break;
                     case 2: Wall(parent, "Hedge", a, b, 1.7f, 0.9f, HedgeGreen); break;
-                    default: Wall(parent, "Fence", a, b, 1.9f, 0.2f, FenceWood); break;
+                    default: Wall(parent, "Fence", a, b, FenceHeight, 0.2f, FenceWood); break;
                 }
             }
             // Gates on the edge of the map are shut (padlocked).
@@ -597,7 +600,7 @@ namespace WaterWars
                 var walk = new Vector2(g[i + 2], g[i + 3]);
                 if (!Near(c) || !OnEdge(def, c, 0.8f)) continue;
                 var along = new Vector2(-walk.y, walk.x);
-                Wall(parent, "Locked Gate", c - along * 1.3f, c + along * 1.3f, 1.9f, 0.2f, FenceWood * 0.85f);
+                Wall(parent, "Locked Gate", c - along * 1.3f, c + along * 1.3f, FenceHeight, 0.2f, FenceWood * 0.85f);
             }
         }
 
@@ -655,7 +658,7 @@ namespace WaterWars
                         Wall(parent, "Hedge", e.A + outward * 0.5f, e.B + outward * 0.5f, 1.6f, 0.9f, HedgeGreen);
                         break;
                     case Edge.Kind.Lot:
-                        Wall(parent, "Fence", e.A + outward * 0.15f, e.B + outward * 0.15f, 1.9f, 0.2f, FenceWood);
+                        Wall(parent, "Fence", e.A + outward * 0.15f, e.B + outward * 0.15f, FenceHeight, 0.2f, FenceWood);
                         break;
                     case Edge.Kind.Park:
                     case Edge.Kind.Verge:
@@ -792,12 +795,46 @@ namespace WaterWars
                             if (e < len - 0.05f) pieces.Add(new[] { a + d * e, b });
                         }
                         foreach (var pc in pieces)
-                            Wall(parent, hedge ? "Tall Hedge" : "Tall Fence", pc[0], pc[1], 2.2f, hedge ? 0.9f : 0.2f, hedge ? HedgeGreen : FenceWood);
+                            Wall(parent, hedge ? "Tall Hedge" : "Tall Fence", pc[0], pc[1], FenceHeight, hedge ? 0.9f : 0.2f, hedge ? HedgeGreen : FenceWood);
                         break;
                     }
                     case Prop.Kind.Tree:
                         Tree(parent, new Vector2(v[0], v[1]), v[2]);
                         break;
+                    case Prop.Kind.Townhome:
+                    {
+                        // A row of joined two-storey homes: one long solid block that makes
+                        // narrow alleys. Each home in the row gets its own color, door and windows.
+                        // (BoxProp has already placed the row, so the trim uses TransformPoint.)
+                        var t = BoxProp(parent, "Townhome Row", v, 7f, HouseColors[n % HouseColors.Length], 0.3f, Roof, true);
+                        int homes = Mathf.Max(1, Mathf.RoundToInt(v[3] / 6f));
+                        float unit = v[3] / homes;
+                        for (int i = 0; i < homes; i++)
+                        {
+                            float x = -v[3] * 0.5f + unit * (i + 0.5f);
+                            var col = HouseColors[(n + i) % HouseColors.Length];
+                            for (int side = -1; side <= 1; side += 2)
+                            {
+                                float z = side * (v[4] * 0.5f + 0.03f);
+                                Shapes.Box("Townhome Front", t.TransformPoint(new Vector3(x, 3.5f, z)), new Vector3(unit - 0.2f, 7f, 0.05f), col, t, false);
+                                Shapes.Box("Townhome Door", t.TransformPoint(new Vector3(x - unit * 0.25f, 1.1f, z * 1.01f)), new Vector3(1f, 2.2f, 0.06f), new Color(0.35f, 0.2f, 0.12f), t, false);
+                                Shapes.Box("Townhome Window", t.TransformPoint(new Vector3(x + unit * 0.15f, 1.7f, z * 1.01f)), new Vector3(1.4f, 1.1f, 0.06f), new Color(0.6f, 0.75f, 0.85f), t, false);
+                                Shapes.Box("Townhome Window", t.TransformPoint(new Vector3(x, 5f, z * 1.01f)), new Vector3(2.4f, 1.1f, 0.06f), new Color(0.6f, 0.75f, 0.85f), t, false);
+                            }
+                        }
+                        break;
+                    }
+                    case Prop.Kind.RV:
+                    {
+                        // A parked motorhome: 10 m long and taller than any kid. Blocks the view.
+                        var rv = Pivot(parent, "RV");
+                        Shapes.BoxOnGround("RV Body", new Vector3(0f, 0.5f, 0f), new Vector3(2.6f, 3f, 10f), new Color(0.95f, 0.93f, 0.86f), rv);
+                        Shapes.Box("RV Stripe", new Vector3(0f, 1.8f, 0f), new Vector3(2.65f, 0.35f, 10.05f), new Color(0.75f, 0.45f, 0.2f), rv, false);
+                        Shapes.Box("RV Windshield", new Vector3(0f, 2.5f, 5.03f), new Vector3(2.2f, 0.9f, 0.06f), new Color(0.3f, 0.4f, 0.5f), rv, false);
+                        Shapes.BoxOnGround("RV Wheels", Vector3.zero, new Vector3(2.65f, 0.6f, 9f), new Color(0.1f, 0.1f, 0.1f), rv, false);
+                        Place(rv, new Vector2(v[0], v[1]), Dir(v[2]));
+                        break;
+                    }
                 }
             }
         }
