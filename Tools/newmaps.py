@@ -141,4 +141,67 @@ iiiXXXXXXiiiiiiiiiJJJJJJJJJhhhhhhhhhIIIIIIIIIjjjjjjjjjjX  48
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  49
 """,
       extra=[]),
+ dict(name="Hickory Corner", start="the corner of Hickory Rd and Birch Ln",
+      A="the motorhome at 100 Hickory Rd", B="the garage sale at 166 Birch Ln",
+      note="Hickory Rd runs north from the corner and Birch Ln runs east, each bending into a site at its far end. The "
+           "back yards inside the corner are the middle: yard to yard to the old oak, where the defenders meet you.",
+      #           11111111112222222222333333333344444444445555
+      # 012345678901234567890123456789012345678901234567890123
+      grid="""
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  00
+III______TTTTTTTTTTTTTTTTTJJJJJJJJkkkkkkkTTTTTTTTTTTTX  01
+III______iiiiiTTTTTTTTTTTTJJJJJJJJkkkkkkkTTTTTTTTTTTTX  02
+III______iiiii,,,,,,,,,,ooJJJJJJJJkkkkkkk__________TTX  03
+III______iiiii,,,,,,,,,,,,JJJJJJJJkkkkkkkXXXXXXXXX_TTX  04
+III______iiiii,,,VVVVV,,,,........kkkkkkk........X_TTX  05
+IIIXXXXXXiiiiiSS,,,,,,,,,,........kkkkkkk........X_TTX  06
+III,:::,XiiiiiSS,,,,,,,,,,XXX...............SS...X_TTX  07
+III,:::,,,,,,,,,,,,A,,VV,,X_X...............SS...X_TTX  08
+jjj,:::,,,,,,,,,,,,,,,,,,,HHH..XXXXXXXXXX........X_TTX  09
+jjj,:::,,,,,,,,,,,,,,,,,,,HHH..IIIIIIIIIX.....2..X_TTX  10
+jjj,:::,XXXXXX,oo,,,,,,,,,HHH..IIIIIIIIIX.oo.....X_TTX  11
+jjj,V::,XXXXXXXXXXXXXX..XXHHH..IIIIIIIIIX........X_TTX  12
+jjj,V::,X........X........HHH..IIIIIIIIIXXXXX..kkkkkkX  13
+jjj,V::,X.o...............HHH..IIIIIIIIIIIIII..kkkkkkX  14
+jjj,V::,X.................HHH..IIIIIIIIIIIIII..kkkkkkX  15
+jjj,::V,X...SS...X..SS....HHH..IIIIIIIIIIIIII..kkkkkkX  16
+KKK,::V,X...SS...X..SS....HHH..IIIIIIIIIIIIII..kkkkkkX  17
+KKK,:::,.........X......o.XXX..XXXXXIIIIIIIII..kkkkkkX  18
+KKK,:::,.........X......o..........XIIIIIIIII..kkkkkkX  19
+KKK,:::,X........X..............oo.XIIIIIIIII....JJJJX  20
+KKK,:TTTXKKKKKKKKKXX..jjjjX........XIIIIIIIII....JJJJX  21
+KKK,:TTTXKKKKKKKKK_X..jjjjX..TT....XIIIIIIIII....JJJJX  22
+KKK,:::,XKKKKKKKKK_X..jjjjX..TT..................JJJJX  23
+KKKTTT:,XKKKKKKKKK_X..jjjjX..TT..................JJJJX  24
+hhhTTT:,XKKKKKKKKK_X..jjjjX........XHHHHHHHHHXX..JJJJX  25
+hhh,:::,XKKKKKKKKK_X..jjjjX.o......XHHHHHHHHH_X..JJJJX  26
+hhh,::V,XKKKKKKKKKXX..jjjjXXXXXXX..XHHHHHHHHHXX..JJJJX  27
+hhh,::V,X........X........jjjjjjj........X.........TTX  28
+hhh,:::,X......o........o.jjjjjjj.oo.....X.........TTX  29
+hhh,:::,..................jjjjjjj..................TTX  30
+hhh,:::,.........X...SS...jjjjjjj...............oo.TTX  31
+hhh,:::,X...SS...X...SS.............SS...X.........TTX  32
+JJJTTT:,X...SS...X..................SS...X.oo,,ggggTTX  33
+JJJTTT:,X........X........XXXXXXX........X..,B,ggggTTX  34
+JJJ,:::,X........X........X_____X........XSS,,,ggggTTX  35
+JJJ,:TTTXXX..XXXXXXXXXX..XKKKKKKKXXXXX..XXSS.......TTX  36
+JJJ,:TTTX.o......X........KKKKKKK........X.........TTX  37
+JJJ,:::,X.o......X......o.KKKKKKK........X.......SSTTX  38
+JJJ,:::,.........X........KKKKKKK........X.......SSTTX  39
+JJJ,:::,....SS...X..SS....KKKKKKK...SS...XX,,,iiiiiiTX  40
+iii,:::,X...SS......SS....KKKKKKK...SS...XX,,,iiiiiijX  41
+iii,:::,X.................KKKKKKK........XX,,,iiiiiijX  42
+iii,V::,X......ooX........KKKKKKK......o.XX,,,iiiiiijX  43
+iii,V::,X........X........KKKKKKK........XX,,,iiiiiijX  44
+iii,:::,XXXXX..XXXXXXX..XXXXXXXXXX..XXXXXXX,,,XjjjjjjX  45
+iii,:::,,,,,,,,,TT,,,,,,,,,,,,,TT,,,,,,,,,,,,,,jjjjjjX  46
+iii,::::::::::::TT::::::VV:::::TT:::::::VV:::::jjjjjjX  47
+iii,:1::::::::::TT:TT:::::::TT:TT::::::::::::::jjjjjjX  48
+X_X,:::::VV::::::::TT:::::::TT::::::VVVV:::::::jjjjjjX  49
+X_X,,,,,,,,,,,,,,,,TT,,,,,,,TT,,,,,,,,,,,,,,,,,jjjjjjX  50
+X_XXXiiiiiiiiJJJJJJJJhhhhhhhhKKKKKKKKjjjjjjjjIIIIIIIIX  51
+X____iiiiiiiiJJJJJJJJhhhhhhhhKKKKKKKKjjjjjjjjIIIIIIIIX  52
+XXXXXiiiiiiiiJJJJJJJJhhhhhhhhKKKKKKKKjjjjjjjjIIIIIIIIX  53
+""",
+      extra=[]),
 ]
