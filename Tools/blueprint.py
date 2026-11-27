@@ -28,6 +28,12 @@
 #        4 a box truck, 5 a motorhome                Y  a school bus (5 in a row)
 #     Q  a block of the school (flat roof, 7 m)     P  portable classroom (3.2 m)
 #     b  bleachers, 1.1 m: you can shoot over them
+#     Z  road work: a tall plywood screen round a hole in the road (4.2 m), with a striped
+#        ROAD CLOSED barricade and cones on every side that faces floor. Close a street
+#        where it leaves the map with Z, never with hedge.
+#     D  a dumpster, 1.5 m: you can shoot over it (alleys, parking lots, the school's back door)
+#     l  logs: a fallen tree in the woods, a woodpile in a yard. 1.2 m, shoot over.
+#        Draw them one square wide.
 #     ~  water (a pond, a creek): nobody walks in, but you see and shoot across it
 #     _  a closed yard: grass and a tree nobody can get to. It must be walled in.
 #
@@ -46,12 +52,13 @@ GROUND = {'.': None, ',': 0, ':': 1, ';': 2, 's': 3}  # paint number, None = gra
 MARKS = {'1': 'att', '2': 'dfn', 'A': 'A', 'B': 'B'}
 RAMP = {'>': 0, '^': 90, '<': 180, 'v': 270}
 HOUSES = {**{c: 8.8 for c in 'HIJK'}, **{c: 5.7 for c in 'hijk'}}
+HOUSE_DEEP = 8.0                  # a house on the map's edge is made at least this deep (meters), past the edge
 BOXES = {'G': 'lockup', 'S': 'shed', 'X': 'bush', 'T': 'thicket', 'o': 'crate', '_': 'yard', 'w': 'pool', '~': 'water',
-         'Q': 'school', 'P': 'portable', 'b': 'bleachers'}
+         'Q': 'school', 'P': 'portable', 'b': 'bleachers', 'D': 'dumpster'}
 FENCE = '-|+'
 VEHICLES = {2: 'car', 3: 'van', 4: 'truck', 5: 'rv'}
 WALK = set(GROUND) | set(MARKS) | set(RAMP) | {'g', 'p'}
-KNOWN = WALK | set(HOUSES) | set(BOXES) | set(FENCE) | {'V', 'Y'}
+KNOWN = WALK | set(HOUSES) | set(BOXES) | set(FENCE) | {'V', 'Y', 'Z', 'l'}
 N, E, S, W = (0, -1), (1, 0), (0, 1), (-1, 0)         # (column, row) steps; row 0 is the north edge
 
 
@@ -156,20 +163,53 @@ def compile(bp, origin=(0.0, 0.0)):
         return {0: sum(walk(c + w, rr) for rr in range(r, r + h)), 90: sum(walk(cc, r - 1) for cc in range(c, c + w)),
                 180: sum(walk(c - 1, rr) for rr in range(r, r + h)), 270: sum(walk(cc, r + h) for cc in range(c, c + w))}
 
+    def street_along(c, r, w, h):
+        # like floor_along, but a street counts three times and a sidewalk twice: a house faces its street.
+        # The map's edge counts a little more than a yard: past it is the street this house is on,
+        # and the map is its back yard.
+        rim = lambda cc, rr: not (0 < cc < Wn - 1 and 0 < rr < Hn - 1)
+        v = lambda cc, rr: ({':': 3, ',': 2}.get(at(cc, rr), 1) if walk(cc, rr) else 1.2 if rim(cc, rr) else 0)
+        return {0: sum(v(c + w, rr) for rr in range(r, r + h)), 90: sum(v(cc, r - 1) for cc in range(c, c + w)),
+                180: sum(v(c - 1, rr) for rr in range(r, r + h)), 270: sum(v(cc, r + h) for cc in range(c, c + w))}
+
     # ---- houses ------------------------------------------------------------------------
     for ch, c, r, w, h in rectangles(rows, set(HOUSES)):
-        x, y, sx, sy = box(c, r, w, h); f = floor_along(c, r, w, h)
-        # the roof's ridge runs the long way, so the front door goes on a long side
-        sides = (90, 270) if w >= h else (0, 180)
-        a = max(sides, key=lambda k: (f[k], k == 270 or k == 0))
-        props.append(('house', x, y, a, max(sx, sy), min(sx, sy), HOUSES[ch]) if w != h else ('house', x, y, a, sx, sy, HOUSES[ch]))
+        x, y, sx, sy = box(c, r, w, h); f = street_along(c, r, w, h)
+        # the front door goes on the side along the street; with no street, on a long side
+        long_side = lambda k: (k in (90, 270)) == (w >= h)
+        a = max((0, 90, 180, 270), key=lambda k: (f[k], long_side(k), k == 270 or k == 0))
+        # A thin house on the map's edge (one or two squares deep) would look like a cardboard
+        # front. The rest of it is past the edge, where nobody goes: make it a whole house deep.
+        rim = lambda cc, rr: not (0 < cc < Wn - 1 and 0 < rr < Hn - 1)
+        out = {0: all(rim(c + w, rr) for rr in range(r, r + h)), 90: all(rim(cc, r - 1) for cc in range(c, c + w)),
+               180: all(rim(c - 1, rr) for rr in range(r, r + h)), 270: all(rim(cc, r + h) for cc in range(c, c + w))}
+        for k in sorted((k for k in out if out[k]), key=lambda k: sx if k in (0, 180) else sy):
+            thick = sx if k in (0, 180) else sy
+            if thick >= HOUSE_DEEP: break
+            edge = {0: X(Wn) - X(c + w), 180: X(c) - X(0), 90: Y(0) - Y(r), 270: Y(r + h) - Y(Hn)}[k]   # squares between the house and the edge
+            grow = min(HOUSE_DEEP - thick, edge + 4.5)                                                  # 4.5 m past the edge at most (the backdrop)
+            dx, dy = {0: (1, 0), 180: (-1, 0), 90: (0, 1), 270: (0, -1)}[k]
+            x, y = x + dx * grow / 2, y + dy * grow / 2
+            if dx: sx += grow
+            else: sy += grow
+            break
+        props.append(('house', x, y, a, sx if a in (90, 270) else sy, sy if a in (90, 270) else sx, HOUSES[ch]))
     # ---- plain boxes -------------------------------------------------------------------
     for ch, c, r, w, h in rectangles(rows, set(BOXES)):
         x, y, sx, sy = box(c, r, w, h)
         if ch in 'Gb':     # the shut door (or the bleachers' low step) faces the floor; a box prop's front is south at angle 0
             f = floor_along(c, r, w, h); a = max(f, key=lambda k: f[k])
             props.append((BOXES[ch], x, y, {270: 0, 0: 90, 90: 180, 180: 270}[a], sx if a in (90, 270) else sy, sy if a in (90, 270) else sx))
+        elif ch == 'D': props.append(('dumpster', x, y, 0, sx - 0.4, sy - 0.4))   # a little gap all round, so it reads as a bin
         else: props.append((BOXES[ch], x, y, 0, sx, sy))
+    # ---- road work: barricades go on every side that faces floor (1 south, 2 east, 4 north, 8 west) ----
+    for ch, c, r, w, h in rectangles(rows, 'Z'):
+        x, y, sx, sy = box(c, r, w, h); f = floor_along(c, r, w, h)
+        props.append(('roadwork', x, y, 0, sx, sy, sum(bit for a, bit in ((270, 1), (0, 2), (90, 4), (180, 8)) if f[a])))
+    # ---- logs: one square wide, lying the long way ----------------------------------------
+    for ch, c, r, w, h in rectangles(rows, 'l'):
+        if min(w, h) != 1: raise Problem('%s: row %d col %d: logs are one square wide, these are %d x %d' % (name, r, c, w, h))
+        x, y, sx, sy = box(c, r, w, h); props.append(('logs', x, y, 0 if w >= h else 90, max(sx, sy) - 0.3))
     # ---- parked vehicles ---------------------------------------------------------------
     for ch, c, r, w, h in rectangles(rows, 'V'):
         n = max(w, h)
@@ -236,11 +276,84 @@ def compile(bp, origin=(0.0, 0.0)):
 
 
 # ---------------------------------------------------------------------------------------
+# Does everything sit where it would in a real neighborhood?
+# ---------------------------------------------------------------------------------------
+STREET_OK = set('VYZD') | set(HOUSES) | set('GQP')     # what may stand in a street or a parking lot
+NOT_AT_STREET_END = set('XTSow_-|+lb')                  # a street does not just stop at these
+
+
+def misplaced(bp):
+    """Things that would look wrong in a real neighborhood: hedges, trees, sheds or crates
+    standing in a street, a street that runs into a hedge, a shed or a pool out in the
+    alley. Returns one line per problem."""
+    rows = rows_of(bp); Hn, Wn = len(rows), len(rows[0])
+    at = lambda c, r: rows[r][c] if 0 <= r < Hn and 0 <= c < Wn else None
+    def ground(c, r):          # what you stand on there: : street, , pavement, ; dirt, . grass (None = solid)
+        ch = at(c, r)
+        if ch is None or ch not in WALK: return None
+        if ch in GROUND: return ch
+        if ch in 'gp': return ','
+        near = [at(c + dc, r + dr) for dc, dr in (W, E, N, S) if at(c + dc, r + dr) in GROUND]
+        return max(set(near), key=near.count) if near else '.'
+    out = []
+    solid = set(KNOWN) - WALK
+    for ch, c, r, w, h in rectangles(rows, solid):
+        sides = {'N': [ground(cc, r - 1) for cc in range(c, c + w)], 'S': [ground(cc, r + h) for cc in range(c, c + w)],
+                 'W': [ground(c - 1, rr) for rr in range(r, r + h)], 'E': [ground(c + w, rr) for rr in range(r, r + h)]}
+        flo = [g for v in sides.values() for g in v if g]
+        if not flo: continue
+        street = {k: v.count(':') for k, v in sides.items()}
+        where = 'row %d col %d' % (r, c)
+        edge = r == 0 or c == 0 or r + h == Hn or c + w == Wn
+        island = all(g == ':' for v in sides.values() for g in v) and ch == 'T'      # trees on an island in a cul-de-sac are fine
+        thing = ch in 'oSwlb'                                                          # a thing, not a wall: it should not stand in the road at all
+        # a planted strip between two parking lots is fine; a clump of trees out in the road is not
+        if ch not in STREET_OK and not island and not edge and flo.count(':') >= 0.6 * len(flo) and (
+                thing or (street['N'] and street['S']) or (street['E'] and street['W'])):
+            out.append('%s: %r stands in the street' % (where, ch))
+        if ch in 'Sw_' and ((';' in sides['N'] and ';' in sides['S']) or (';' in sides['E'] and ';' in sides['W'])):
+            out.append('%s: %r stands out in the alley' % (where, ch))
+        if ch in 'VY' and max(w, h) > 1:
+            # cars park along the street, not across it: which way does the street run here?
+            mc, mr = c + w // 2, r + h // 2
+            def run(dc, dr):
+                k = 1
+                while at(mc + dc * k, mr + dr * k) in (':', 'V', 'Y') or ground(mc + dc * k, mr + dr * k) == ':': k += 1
+                return k - 1
+            across, along = (run(0, 1) + run(0, -1) + 1, run(1, 0) + run(-1, 0) + 1) if w > h else (run(1, 0) + run(-1, 0) + 1, run(0, 1) + run(0, -1) + 1)
+            # backed up to a house or a garage (moving day), or parked by road work: that's fine
+            ends = [at(c - 1, r), at(c + w, r)] if w > h else [at(c, r - 1), at(c, r + h)]
+            backed = any(e is not None and (e in HOUSES or e in 'GgZ') for e in ends)
+            if across >= 2 * along and along <= 5 and not edge and not backed:
+                out.append('%s: the %s is parked across the street' % (where, 'vehicle' if ch == 'V' else 'bus'))
+    ends = set()
+    for r in range(Hn):
+        for c in range(Wn):
+            ch = rows[r][c]
+            if ch not in NOT_AT_STREET_END: continue
+            for dc, dr in (N, E, S, W):
+                if ground(c - dc, r - dr) != ':': continue
+                away = 0
+                while ground(c - dc * (away + 1), r - dr * (away + 1)) == ':': away += 1
+                # the street's cross-section here, and whether all of it stops (a bay that only narrows doesn't)
+                cross = [(c - dc, r - dr)]
+                for sgn in (1, -1):
+                    k = 1
+                    while ground(c - dc + sgn * k * dr, r - dr + sgn * k * dc) == ':': cross.append((c - dc + sgn * k * dr, r - dr + sgn * k * dc)); k += 1
+                stops = all(ground(cc + dc, rr + dr) != ':' for cc, rr in cross)
+                key = (min(cross), dc, dr)
+                if away >= 4 and 2 <= len(cross) <= 5 and away > len(cross) and stops and key not in ends:
+                    ends.add(key)
+                    out.append('row %d col %d: the street runs into %r (close a street with Z road work, a house or a vehicle)' % (r, c, ch))
+    return out
+
+
+# ---------------------------------------------------------------------------------------
 # A picture of the drawing
 # ---------------------------------------------------------------------------------------
 COLORS = {'.': '#9fce7a', ',': '#d9d5cc', ':': '#77777c', ';': '#c9a777', 's': '#ead9a0', 'g': '#f1ede4', '_': '#b9dc9a', 'w': '#69bdf0', '~': '#3f86c9', 'Q': '#a86a4c', 'P': '#d9b26f', 'b': '#b9bdc4', 'Y': '#f2b90f',
           'G': '#8d8d8a', 'S': '#6f8266', 'X': '#2f6b2a', 'T': '#1f4f1c', 'o': '#b08556', 'V': '#3b5f9c',
-          '-': '#7a5230', '|': '#7a5230', '+': '#7a5230'}
+          '-': '#7a5230', '|': '#7a5230', '+': '#7a5230', 'Z': '#f08a24', 'D': '#2f5f8f', 'l': '#8a5a2b'}
 COLORS.update({c: '#b5654b' for c in 'HIJK'}); COLORS.update({c: '#d9a28c' for c in 'hijk'})
 
 
@@ -257,12 +370,21 @@ def draw(bp, path, mp=None):
     shade = {'house': None, 'lockup': COLORS['G'], 'shed': COLORS['S'], 'bush': COLORS['X'], 'thicket': COLORS['T'], 'crate': COLORS['o'],
              'yard': COLORS['_'], 'pool': COLORS['w'], 'water': COLORS['~'], 'school': COLORS['Q'], 'bleachers': COLORS['b'], 'bus': COLORS['Y'], 'fence': COLORS['-'], 'hedge': COLORS['X'], 'garage': '#55555a', 'treehouse': '#7a5230',
              'car': '#6f8fd0', 'van': COLORS['V'], 'truck': COLORS['V'], 'rv': COLORS['V'], 'stand': '#e67e22', 'tent': '#ff6fa8',
-             'portable': '#d9b26f', 'townhome': '#b5838d', 'tree': '#2e7d32'}
+             'portable': '#d9b26f', 'townhome': '#b5838d', 'tree': '#2e7d32', 'roadwork': COLORS['Z'], 'dumpster': COLORS['D'], 'logs': COLORS['l']}
     for p in mp['props']:
         if p[0] == 'paint': continue
         col = shade.get(p[0]) or ('#b5654b' if p[6] > 7 else '#d9a28c')
         for g in PROPS.footprint(p):
             ax.add_patch(MPoly(list(g.exterior.coords), fc=col, ec='#222' if p[0] not in ('yard', 'water') else 'none', lw=0.4))
+        if p[0] == 'house':      # a white mark on the front, where the door is
+            r = math.radians(p[3]); fx, fy = p[1] + math.cos(r) * (p[5] / 2 - 0.6), p[2] + math.sin(r) * (p[5] / 2 - 0.6)
+            ax.add_patch(Rectangle((fx - 0.6, fy - 0.6), 1.2, 1.2, fc='white', ec='#222', lw=0.4, zorder=3))
+        if p[0] == 'roadwork':   # stripes on the sides with a barricade
+            for bit, (dx, dy) in ((1, (0, -1)), (2, (1, 0)), (4, (0, 1)), (8, (-1, 0))):
+                if p[6] & bit:
+                    cx, cy = p[1] + dx * p[4] / 2, p[2] + dy * p[5] / 2
+                    lx, ly = (p[4], 0.5) if dy else (0.5, p[5])
+                    ax.add_patch(Rectangle((cx - lx / 2, cy - ly / 2), lx, ly, fc='white', ec='none', hatch='////', zorder=3))
         if p[0] == 'tent':
             ax.add_patch(Rectangle((p[1] - p[4] / 2, p[2] - p[5] / 2), p[4], p[5], fc='#ff6fa8', ec='#222', lw=0.5, alpha=.45, hatch='//'))
         if p[0] == 'treehouse':
@@ -283,7 +405,8 @@ def draw(bp, path, mp=None):
            ('truck or van', COLORS['V']), ('car (see over)', '#6f8fd0'), ('closed yard', COLORS['_']), ('street', COLORS[':']),
            ('pavement', COLORS[',']), ('dirt', COLORS[';']), ('pool (see over)', COLORS['w']), ('tent roof', '#ff9cc4'),
            ('water (see across)', COLORS['~']), ('sand', COLORS['s']), ('school', COLORS['Q']), ('portable classroom', COLORS['P']),
-           ('bleachers (shoot over)', COLORS['b']), ('school bus', COLORS['Y'])]
+           ('bleachers (shoot over)', COLORS['b']), ('school bus', COLORS['Y']), ('road work', COLORS['Z']),
+           ('dumpster (shoot over)', COLORS['D']), ('logs (shoot over)', COLORS['l']), ('front door', 'white')]
     ax.legend(handles=[Patch(fc=c, ec='#444', lw=0.4, label=t) for t, c in key], loc='upper center', bbox_to_anchor=(0.5, -0.03),
               ncol=7, fontsize=6.5, frameon=False, handlelength=1.2, columnspacing=1.0)
     fig.tight_layout(); fig.savefig(path, dpi=110); plt.close(fig)
@@ -383,4 +506,6 @@ if __name__ == '__main__':
         print('   bots: %d stepping stones, %d cut off from the attackers\' start %s; start, defenders, A, B reachable: %s%s' % (
             st['stones'], len(st['cut_off']), st['cut_off'][:6] if st['cut_off'] else '', all(st['key'].values()),
             '; %d stones outside the floor (should be 0)' % st['stray'] if st['stray'] else ''))
+        bad = misplaced(bp)
+        if bad: print('   out of place (%d):\n     ' % len(bad) + '\n     '.join(bad))
         if want: report(measure(mp))

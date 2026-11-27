@@ -543,9 +543,12 @@ namespace WaterWars
         static void BuildHouse(Transform root, string name, Vector3 bottomCenter, Vector3 size, Color wall)
         {
             Shapes.BoxOnGround(name + " Walls", bottomCenter, size, wall, root);
-            float roofSide = size.z * 0.72f;
-            var roof = Shapes.Box(name + " Roof", bottomCenter + Vector3.up * size.y, new Vector3(size.x + 0.6f, roofSide, roofSide), Roof, root);
-            roof.transform.rotation = Quaternion.Euler(45f, 0f, 0f);
+            // the roof's ridge runs the long way: side to side on a wide house, front to back on a deep one
+            bool deep = size.z > size.x;
+            float roofSide = (deep ? size.x : size.z) * 0.72f;
+            var roof = Shapes.Box(name + " Roof", bottomCenter + Vector3.up * size.y,
+                deep ? new Vector3(roofSide, roofSide, size.z + 0.6f) : new Vector3(size.x + 0.6f, roofSide, roofSide), Roof, root);
+            roof.transform.rotation = deep ? Quaternion.Euler(0f, 0f, 45f) : Quaternion.Euler(45f, 0f, 0f);
             float face = -size.z * 0.5f - 0.03f;
             Shapes.Box(name + " Door", bottomCenter + new Vector3(0f, 1.1f, face), new Vector3(1.4f, 2.2f, 0.05f), new Color(0.45f, 0.25f, 0.15f), root, false);
             for (int i = -1; i <= 1; i += 2)
@@ -809,6 +812,52 @@ namespace WaterWars
         static readonly Color WaterBlue = new Color(0.3f, 0.55f, 0.8f);
         static readonly Color SchoolBrick = new Color(0.78f, 0.6f, 0.45f);
         const float SchoolHeight = 7f;
+        static readonly Color Plywood = new Color(0.84f, 0.71f, 0.5f);
+        static readonly Color DumpsterBlue = new Color(0.16f, 0.36f, 0.58f);
+        static readonly Color LogEnd = new Color(0.5f, 0.37f, 0.25f);
+        static readonly Color Brush = new Color(0.16f, 0.32f, 0.14f);
+        static readonly Color[] LeafTones = { new Color(0.27f, 0.52f, 0.2f), new Color(0.33f, 0.58f, 0.24f), new Color(0.22f, 0.45f, 0.19f) };
+        const float RoadWorkHeight = 4.2f, LogsHeight = 1.2f;
+
+        /// A clump of trees with brush so thick you can't push through or see through.
+        /// It is built to look like trees, not like a hedge: a dark core of brush, round bushes
+        /// all along its edge, and a canopy of leafy balls on trunks above. What stops you is
+        /// one plain hidden box, the same size Tools/props.py measures, so the game and the
+        /// tools agree on what blocks a shot.
+        static void BuildThicket(Transform parent, float[] v, int seed)
+        {
+            var stop = BoxProp(parent, "Thicket", v, ThicketHeight, Brush);
+            foreach (var r in stop.GetComponentsInChildren<Renderer>()) Object.DestroyImmediate(r);
+            var look = Pivot(parent, "Thicket Trees");
+            float w = v[3], d = v[4];
+            var rng = new System.Random(seed * 7919 + Mathf.RoundToInt(v[0] * 13f + v[1] * 31f));
+            float Jitter(float a) { return ((float)rng.NextDouble() * 2f - 1f) * a; }
+            Color Tone() { return LeafTones[rng.Next(LeafTones.Length)]; }
+            Shapes.BoxOnGround("Brush", Vector3.zero, new Vector3(Mathf.Max(0.6f, w - 0.8f), 4.4f, Mathf.Max(0.6f, d - 0.8f)), Brush, look, false);
+            for (int side = 0; side < 4; side++)          // round bushes along every edge
+            {
+                bool alongX = side < 2;
+                float len = alongX ? w : d, edge = (alongX ? d : w) * 0.5f - 0.6f;
+                int count = Mathf.Max(1, Mathf.RoundToInt(len / 1.7f));
+                for (int i = 0; i < count; i++)
+                {
+                    float s = -len * 0.5f + len * (i + 0.5f) / count;
+                    Vector3 at = alongX ? new Vector3(s, 0f, side == 0 ? -edge : edge) : new Vector3(side == 2 ? -edge : edge, 0f, s);
+                    float size = 2.3f + Jitter(0.3f);
+                    Shapes.Ball("Bush", at + Vector3.up * (size * 0.45f), size, Tone() * 0.85f, look);
+                }
+            }
+            int across = Mathf.Max(1, Mathf.RoundToInt(w / 3.2f)), deep = Mathf.Max(1, Mathf.RoundToInt(d / 3.2f));
+            for (int i = 0; i < across; i++)              // trees: a trunk and a big ball of leaves each
+                for (int j = 0; j < deep; j++)
+                {
+                    var at = new Vector3(-w * 0.5f + w * (i + 0.5f) / across + Jitter(0.4f), 0f, -d * 0.5f + d * (j + 0.5f) / deep + Jitter(0.4f));
+                    Shapes.BoxOnGround("Tree Trunk", at, new Vector3(0.5f, 4.6f, 0.5f), Bark, look, false);
+                    Shapes.Ball("Tree Leaves", at + Vector3.up * (4.5f + Jitter(0.5f)), 4.3f + Jitter(0.6f), Tone(), look);
+                }
+            look.position = stop.position;
+            look.rotation = stop.rotation;
+        }
 
         static Vector2 Dir(float degrees)
         {
@@ -889,16 +938,78 @@ namespace WaterWars
                         break;
                     }
                     case Prop.Kind.Thicket:
+                        BuildThicket(parent, v, n);
+                        break;
+                    case Prop.Kind.Roadwork:
                     {
-                        // A clump of trees with brush so thick you can't push through or see through.
-                        var t = BoxProp(parent, "Thicket", v, ThicketHeight, HedgeGreen * 0.85f);
-                        int across = Mathf.Max(1, Mathf.RoundToInt(v[3] / 5f)), deep = Mathf.Max(1, Mathf.RoundToInt(v[4] / 5f));
-                        for (int i = 0; i < across; i++)
-                            for (int j = 0; j < deep; j++)
+                        // Road work: a plywood screen round a hole in the road. Every side that faces
+                        // floor gets an orange band, a striped ROAD CLOSED barricade with a lamp, and
+                        // cones. v[5] says which sides: 1 south, 2 east, 4 north, 8 west. (The angle is
+                        // always 0, so the box lines up with north.) Only the screen is solid: the
+                        // barricade and cones stand close in and let you walk through them, so they
+                        // never take away a bot's stepping stone.
+                        var t = BoxProp(parent, "Road Work", v, RoadWorkHeight, Plywood);
+                        int sides = Mathf.RoundToInt(v[5]);
+                        Vector3 c = t.position;
+                        for (int s = 0; s < 4; s++)
+                        {
+                            if ((sides & (1 << s)) == 0) continue;
+                            Vector3 o = s == 0 ? Vector3.back : s == 1 ? Vector3.right : s == 2 ? Vector3.forward : Vector3.left;
+                            bool facesZ = s % 2 == 0;
+                            float half = (facesZ ? v[4] : v[3]) * 0.5f, len = facesZ ? v[3] : v[4];
+                            Vector3 along = facesZ ? Vector3.right : Vector3.forward;
+                            Vector3 Size(float l, float h, float thick) { return facesZ ? new Vector3(l, h, thick) : new Vector3(thick, h, l); }
+                            Shapes.Box("Hazard Band", c + o * (half + 0.02f) + Vector3.up * 3.4f, Size(len, 0.45f, 0.05f), Orange, t, false);
+                            float board = Mathf.Max(1f, len - 0.8f);
+                            Vector3 front = c + o * (half + 0.3f);
+                            int stripes = Mathf.Max(2, Mathf.RoundToInt(board / 0.7f));
+                            for (int i = 0; i < stripes; i++)
                             {
-                                Vector3 at = t.TransformPoint(new Vector3(-v[3] * 0.5f + v[3] * (i + 0.5f) / across, 0f, -v[4] * 0.5f + v[4] * (j + 0.5f) / deep));
-                                Tree(parent, XZ(at), 3.2f);
+                                Vector3 at = front + along * (-board * 0.5f + board * (i + 0.5f) / stripes);
+                                Color col = i % 2 == 0 ? Orange : PicketWhite;
+                                Shapes.Box("Barricade Board", at + Vector3.up * 0.95f, Size(board / stripes, 0.3f, 0.06f), col, t, false);
+                                Shapes.Box("Barricade Board", at + Vector3.up * 0.45f, Size(board / stripes, 0.3f, 0.06f), col, t, false);
                             }
+                            for (int e = -1; e <= 1; e += 2)
+                            {
+                                Vector3 leg = front + along * (e * board * 0.5f);
+                                Shapes.BoxOnGround("Barricade Leg", leg, new Vector3(0.1f, 1.1f, 0.1f), PicketWhite, t, false);
+                                Shapes.Box("Barricade Lamp", leg + Vector3.up * 1.2f, new Vector3(0.2f, 0.2f, 0.2f), new Color(1f, 0.85f, 0.15f), t, false);
+                            }
+                            if (len >= 3.9f)
+                                Shapes.Box("Road Closed Sign", front + Vector3.up * 1.5f + o * 0.02f, Size(1.6f, 0.5f, 0.05f), PicketWhite, t, false);
+                            Vector3 cones = front + o * 0.8f;
+                            Cones(t, new Vector2(cones.x, cones.z), new Vector2(along.x, along.z), Mathf.Max(1, Mathf.FloorToInt(len / 4f)));
+                        }
+                        break;
+                    }
+                    case Prop.Kind.Dumpster:
+                    {
+                        // A dumpster with its lid down: low enough to shoot over, big enough to hide behind.
+                        var t = BoxProp(parent, "Dumpster", v, 1.35f, DumpsterBlue);
+                        Shapes.Box("Dumpster Lid", t.position + Vector3.up * 1.425f, new Vector3(v[3], 0.15f, v[4]), DumpsterBlue * 0.7f, t);
+                        break;
+                    }
+                    case Prop.Kind.Logs:
+                    {
+                        // Logs: a fallen tree in the woods, a woodpile in a yard. Low enough to shoot over.
+                        // v: x, y, the angle they lie along, length. A hidden box (the size Tools/props.py
+                        // measures) is what stops you; the three round logs are only for looks.
+                        var t = Pivot(parent, "Logs");
+                        var stop = Shapes.BoxOnGround("Logs Box", Vector3.zero, new Vector3(1.3f, LogsHeight, v[3]), Bark, t);
+                        Object.DestroyImmediate(stop.GetComponent<Renderer>());
+                        for (int i = 0; i < 3; i++)
+                        {
+                            var log = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                            log.name = "Log";
+                            log.transform.SetParent(t, false);
+                            Object.DestroyImmediate(log.GetComponent<Collider>());
+                            log.transform.localPosition = new Vector3(i == 2 ? 0f : (i == 0 ? -0.33f : 0.33f), i == 2 ? 0.88f : 0.33f, 0f);
+                            log.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                            log.transform.localScale = new Vector3(0.64f, v[3] * 0.5f - (i == 2 ? 0.25f : 0f), 0.64f);
+                            log.GetComponent<Renderer>().sharedMaterial = Shapes.Mat(i == 2 ? LogEnd : Bark);
+                        }
+                        Place(t, new Vector2(v[0], v[1]), Dir(v[2]));
                         break;
                     }
                     case Prop.Kind.Crate:

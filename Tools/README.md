@@ -33,6 +33,17 @@ nothing standing within 3 squares of a door; doors on opposite sides of a room n
 in line, and a shed or trees on any straight line over 40 m; walls of houses, 4.2 m
 hedges or 6 m trees rather than 3 m fences.
 
+Everything also has to sit where it would in a real neighborhood. `blueprint.py`
+lists anything out of place under "out of place": a hedge, trees, a shed or crates
+standing in a street, a street that just stops at a hedge (close it with `Z` road
+work, a house or a vehicle), a car parked across a street (unless it is backed up to
+a house or a garage, or parked by road work), a shed or a pool out in the alley.
+Streets get vehicles, road work (`Z`) and dumpsters (`D`); woods and yards get logs
+(`l`); crates belong at a garage sale, a loading dock or a fort. A house's front door
+goes on the side along a street; with no street, on the map's edge (its street is
+past the edge and the map is its back yard); otherwise on a long side. A house on
+the edge that is only a square or two deep is built a whole house deep, past the edge.
+
 `maps5.py` still holds the old cut-out maps and the Maple Park neighborhood. They
 are no longer what the game plays, but export_cs.py still reads them, so leave them
 until the remade maps have been played and kept.

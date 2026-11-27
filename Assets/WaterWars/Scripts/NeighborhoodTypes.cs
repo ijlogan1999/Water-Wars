@@ -126,11 +126,15 @@ namespace WaterWars
     ///   School:                        x, y, angle, width, depth (a flat-roofed brick school block, 7 m tall, solid)
     ///   Bleachers:                     x, y, angle the low step faces, width, depth (two steps, low enough to shoot over)
     ///   Bus:                           x, y, angle (a parked school bus, 10 m long, blocks the view)
+    ///   Roadwork:                      x, y, angle, width, depth, sides (a plywood screen round road work, 4.2 m;
+    ///                                  a ROAD CLOSED barricade and cones on each side in `sides`: 1 south, 2 east, 4 north, 8 west)
+    ///   Dumpster:                      x, y, angle, width, depth (low enough to shoot over)
+    ///   Logs:                          x, y, angle they lie along, length (a fallen tree or a woodpile, shoot over)
     public class Prop
     {
         public enum Kind { Car, Van, Truck, Portable, Shed, Stand, Tent, Fence, Hedge, Tree, Townhome, RV,
                            House, Lockup, Bush, Thicket, Crate, Yard, Garage, Treehouse, Paint, Pool, Water,
-                           School, Bleachers, Bus }
+                           School, Bleachers, Bus, Roadwork, Dumpster, Logs }
         public readonly Kind What;
         public readonly float[] V;
         public Prop(Kind what, float[] v) { What = what; V = v; }
