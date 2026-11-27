@@ -16,13 +16,16 @@ namespace WaterWars
         public const int TeamSize = 5;            // 5v5. You + 4 bot teammates vs 5 bots.
         public const int RoundsToWin = 7;         // First to 7 rounds.
         public const int SwapSidesAfterRound = 6; // Teams switch attack/defend after round 6.
+        // Which side YOU start on. true = you defend the sites first (attack after the swap),
+        // false = you attack first.
+        public const bool YouStartOnDefense = true;
 
         // ---- Map -----------------------------------------------------------
         // Every match picks one of the Maple Park maps (see NeighborhoodData.Maps):
         //   1 Park Run, 2 Willow Court, 3 Schoolyard, 4 Creekside,
         //   5 Pine St Backyards, 6 Hickory Corner.
         // 0 = a random one each match. Set a number to always play that map.
-        public const int MapChoice = 0;
+        public const int MapChoice = 2;   // Willow Court: the first map remade from a blank page (Tools/newmaps.py)
         // Set this to true to switch to a different map every ROUND instead.
         public const bool NewMapEachRound = false;
 
@@ -72,6 +75,14 @@ namespace WaterWars
         public const float StandHeight = 1.8f;
         public const float CrouchHeight = 1.2f;
         public const float DefaultMouseSensitivity = 2f;
+
+        // ---- Camera --------------------------------------------------------
+        // How wide the camera lens is, measured top to bottom, in degrees.
+        // 74 gives about 106 degrees side to side on a widescreen, the same as
+        // CS2 (Valorant is 103). It was 85 (117 side to side): a lens that wide
+        // makes fences look shorter and yards look bigger than they are.
+        // Bigger = see more but everything looks smaller and farther away.
+        public const float FieldOfView = 74f;
 
         // ---- Bots ----------------------------------------------------------
         public const float BotSightRange = 45f;

@@ -87,7 +87,7 @@ namespace WaterWars
             for (int i = 0; i < Tuning.TeamSize; i++) AddBot(TealNames[i % TealNames.Length], Team.Teal, world);
 
             // Stand everyone at their spawns while you pick a hero.
-            Attackers = Team.Orange;
+            Attackers = Tuning.YouStartOnDefense ? Team.Teal : Team.Orange;
             PlaceEveryone(false);
             Phase = Phase.HeroSelect;
         }
@@ -128,7 +128,10 @@ namespace WaterWars
             HeroWorld.Clear();   // throw away last round's fans, walls, traps and clouds
             if (Tuning.NewMapEachRound && Round > 1) Map = GameBootstrap.RegenerateMap();
             SuddenDeath = Round > Tuning.SwapSidesAfterRound * 2;
-            Attackers = Round <= Tuning.SwapSidesAfterRound || SuddenDeath ? Team.Orange : Team.Teal;
+            // You are on Orange. FirstAttackers is whoever attacks in the first half.
+            Team firstAttackers = Tuning.YouStartOnDefense ? Team.Teal : Team.Orange;
+            Team firstDefenders = firstAttackers == Team.Orange ? Team.Teal : Team.Orange;
+            Attackers = Round <= Tuning.SwapSidesAfterRound || SuddenDeath ? firstAttackers : firstDefenders;
             PlaceEveryone(true);
 
             if (SuddenDeath)

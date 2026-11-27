@@ -7,7 +7,7 @@ D=pickle.load(open("rec.pkl","rb")); REC=D["REC"]
 src=open("maps5.py").read().split("# individual sheets")[0]
 src=src.replace('img=plt.imread("base.png"); ','')
 g={}; exec(src,g)
-MAPS=g["MAPS"]; blocks=g["blocks"]; ST=g["ST"]; KINDS=g["KINDS"]
+MAPS=g["MAPS"]; blocks=g["blocks"]; ST=g["ST"]; KINDS=g["KINDS"]; PROPS=g["PROPS"]
 rng=random.Random(11)
 F=lambda v: (("%.2f"%v).rstrip("0").rstrip(".")+"f") if abs(round(v,2)-round(v))>1e-9 else str(int(round(v)))
 def arr(vals): return "new float[]{"+",".join(F(float(v)) for v in vals)+"}"
@@ -155,11 +155,11 @@ def classify(p):
             return "Curb" if np.dot(np.array(p)-r["m"],r["n"])<7 else "Lot"
     return "Verge"
 SITES={
- 0:[("pavilion","Spot",None,(309,142.5),9),("playground","Spot",None,(352,135),9)],
+ 0:[("pavilion","Spot",None,(309,142.5),9),("playground","Spot",None,(357,133),9)],
  1:[("104 Willow Ct garage","Garage",("Willow Ct",104),None,8),("110 Willow Ct treehouse","Treehouse",("Willow Ct",110),None,8.5)],
- 2:[("school back doors","Spot",None,(447,207),9),("soccer bleachers","Spot",None,(540,222),9.5)],
+ 2:[("school back doors","Spot",None,(447,207),9),("soccer bleachers","Spot",None,(530,224),9.5)],
  3:[("footbridge","Spot",None,(617,131),8),("130 Cedar Ln backyard","Yard",("Cedar Ln",130),(566,140),8)],
- 4:[("122 Cedar Ln backyard","Yard",("Cedar Ln",122),(476,150),8),("154 Birch Ln garage","Garage",("Birch Ln",154),None,8)],
+ 4:[("122 Cedar Ln backyard","Yard",("Cedar Ln",122),None,8),("156 Birch Ln backyard","Yard",("Birch Ln",156),None,8)],
  5:[("166 Birch Ln garage","Garage",("Birch Ln",166),None,8),("100 Hickory Rd backyard","Yard",("Hickory Rd",100),(170,110),8)],
 }
 STARTS={0:"Maple St",1:"Birch Ln",2:"Birch Ln",3:"Maple St",4:"Pine St",5:"Maple St"}
@@ -170,7 +170,10 @@ for i,m in enumerate(MAPS):
     ring=np.array(area.exterior.coords[:-1])
     near=area.buffer(45)
     lots=[j for j,r in enumerate(REC) if r["lot"].intersects(near)]
-    fen=[j for j,(p,q,_) in enumerate(fence_lines) if LineString([p,q]).intersects(near)]
+    cover=m.get("cover",[])
+    # old fences that a map's new fence or hedge replaces are left out of that map
+    fen=[j for j,(p,q,_) in enumerate(fence_lines) if LineString([p,q]).intersects(near)
+         and not any(PROPS.replaces_fence(c,p,q) for c in cover)]
     # boundary pieces
     pieces=[]
     ext=list(area.exterior.coords)
@@ -220,20 +223,46 @@ for i,m in enumerate(MAPS):
                 new[]{ %s },
                 new[]{ %s },
                 new[]{ %s },
+                new Prop[]{ %s },
                 new int[]{%s},
                 new int[]{%s})'''%(name,m["note"].replace('"',"'"),STARTS[i],arr(ring.ravel()),arr(att),arr(dfn),
         ", ".join(sites),
         ", ".join('new Roadblock(Roadblock.Kind.%s,%s,%s)'%(kd,arr(p),arr(dd)) for p,dd,kd in rbs),
         ", ".join('new Edge(%s,%s,Edge.Kind.%s)'%(arr(p),arr(q),c.replace("|F","Fenced")) for p,q,c,_ in pcs),
+        ", ".join('new Prop(Prop.Kind.%s,%s)'%({'rv':'RV'}.get(c[0],c[0].title()),arr(c[1:])) for c in cover),
         ",".join(map(str,lots)),",".join(map(str,fen))))
     print(name,len(lots),"lots",len(fen),"fences",len(pcs),"edges",len(rbs),"blocks",[c for _,_,c,_ in pcs])
+# ---------- remade maps ----------
+# A map drawn from a blank page (newmaps.py, checked and turned into pieces by blueprint.py)
+# takes the place of the old map with the same name. It lists no lots or fences: the
+# game builds it from its props alone.
+import blueprint, newmaps
+names=[m["name"].split(". ",1)[1].replace(" (the one you approved)","") for m in MAPS]
+for bp in newmaps.MAPS:
+    mp=blueprint.compile(bp)
+    line='''            new MapDef("%s", "%s", "%s",
+                %s,
+                %s, %s,
+                new[]{ %s },
+                new Roadblock[]{ },
+                new[]{ %s },
+                new Prop[]{ %s },
+                new int[]{},
+                new int[]{})'''%(mp["name"],mp["note"].replace('"',"'"),mp["start"],arr(mp["area"]),arr(mp["att"]),arr(mp["dfn"]),
+        ", ".join('new SiteDef("%s",SiteKind.%s,%d,%s,%s)'%(label,kind,lot,arr(c),F(rad)) for label,kind,lot,c,rad in mp["sites"]),
+        ", ".join('new Edge(%s,%s,Edge.Kind.%s)'%(arr(p),arr(q),k) for p,q,k in mp["edges"]),
+        ", ".join('new Prop(Prop.Kind.%s,%s)'%({'rv':'RV'}.get(c[0],c[0].title()),arr(c[1:])) for c in mp["props"]))
+    if mp["name"] in names: map_lines[names.index(mp["name"])]=line
+    else: map_lines.append(line); names.append(mp["name"])
+    print("remade:",mp["name"],len(mp["props"]),"pieces")
 park="".join("%s,%s,%s,"%(F(x),F(y),F(r)) for x,y,r in D["PARKTREES"])
 out='''// NeighborhoodData.cs   (GENERATED: made by a script from the Maple Park drawings, don't edit by hand)
 // ---------------------------------------------------------------------------
-// The layout of the whole Maple Park neighborhood and its six example maps,
-// written out as plain numbers so the game builds exactly what the drawings
-// show. Positions are in meters: x goes east, y goes north (in Unity, the
-// drawing's y becomes z).
+// The layout of the whole Maple Park neighborhood and the maps, written out as
+// plain numbers so the game builds exactly what the drawings show. Positions are
+// in meters: x goes east, y goes north (in Unity, the drawing's y becomes z).
+// A map that lists no lots is a remade one, drawn from a blank page in
+// Tools/newmaps.py: the game builds it from its props alone.
 // ---------------------------------------------------------------------------
 
 namespace WaterWars

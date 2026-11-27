@@ -96,13 +96,53 @@ namespace WaterWars
     /// One straight piece of a map's edge, and what's on the other side of it.
     public class Edge
     {
-        public enum Kind { Street, Curb, Lot, LotFenced, CurbFenced, Park, School, Woods, Verge }
+        // Wall = nothing to see, only the invisible wall (blueprint maps: their outer ring is already solid).
+        public enum Kind { Street, Curb, Lot, LotFenced, CurbFenced, Park, School, Woods, Verge, Wall }
         public readonly Vector2 A, B;
         public readonly Kind What;
         public Edge(float[] a, float[] b, Kind what) { A = LotRec.V(a); B = LotRec.V(b); What = what; }
     }
 
+    /// Extra cover a map adds on top of the neighborhood: parked cars, vans,
+    /// portable classrooms, sheds, a snack stand, party tents, new fences and
+    /// hedges, trees. Added after the Map Playbook review (tactical shooter
+    /// lessons): they break up long sightlines and split open areas into lanes.
+    /// The numbers mean (sizes in meters, angles in degrees, 0 = pointing east):
+    ///   Car, Van, Truck:               x, y, angle (the way the long side points)
+    ///   Portable, Shed, Stand, Tent:   x, y, angle, width, depth
+    ///   Fence, Hedge:                  x1, y1, x2, y2, gateAt, gateWidth
+    ///                                  (a gap gateWidth wide, gateAt meters from the first end; gateAt below 0 = no gate)
+    ///   Tree:                          x, y, radius
+    /// Blueprint maps (the ones drawn from a blank page, see Tools/blueprint.py) are made
+    /// of nothing but props, so they add the big pieces too:
+    ///   House:                         x, y, angle the front door faces, width, depth, height (solid, you can't go in)
+    ///   Lockup, Bush, Thicket, Crate, Pool:  x, y, angle, width, depth (a shut garage, a hedge block, a clump
+    ///                                  of trees, a box low enough to shoot over, an above-ground pool)
+    ///   Yard:                          x, y, angle, width, depth (a fenced-off yard nobody can get into)
+    ///   Garage:                        x, y, angle the big door faces, backDoor (1 = yes). You CAN go in.
+    ///   Treehouse:                     x, y, angle the ramp runs out toward
+    ///   Paint:                         x, y, width, depth, what (0 pavement, 1 asphalt, 2 dirt, 3 sand): flat ground color
+    ///   Water:                         x, y, angle, width, depth (a pond or creek: you see and shoot across it, nobody walks in)
+    ///   School:                        x, y, angle, width, depth (a flat-roofed brick school block, 7 m tall, solid)
+    ///   Bleachers:                     x, y, angle the low step faces, width, depth (two steps, low enough to shoot over)
+    ///   Bus:                           x, y, angle (a parked school bus, 10 m long, blocks the view)
+    ///   Roadwork:                      x, y, angle, width, depth, sides (a plywood screen round road work, 4.2 m;
+    ///                                  a ROAD CLOSED barricade and cones on each side in `sides`: 1 south, 2 east, 4 north, 8 west)
+    ///   Dumpster:                      x, y, angle, width, depth (low enough to shoot over)
+    ///   Logs:                          x, y, angle they lie along, length (a fallen tree or a woodpile, shoot over)
+    public class Prop
+    {
+        public enum Kind { Car, Van, Truck, Portable, Shed, Stand, Tent, Fence, Hedge, Tree, Townhome, RV,
+                           House, Lockup, Bush, Thicket, Crate, Yard, Garage, Treehouse, Paint, Pool, Water,
+                           School, Bleachers, Bus, Roadwork, Dumpster, Logs }
+        public readonly Kind What;
+        public readonly float[] V;
+        public Prop(Kind what, float[] v) { What = what; V = v; }
+    }
+
     /// One map: a piece of the neighborhood with spawns, two sites and closed-off edges.
+    /// Or a "blueprint" map: one drawn from a blank page, built only from its Props
+    /// (it lists no neighborhood lots, and that is how the game tells them apart).
     public class MapDef
     {
         public readonly string Name, Note, AttackerStreet;
@@ -111,16 +151,21 @@ namespace WaterWars
         public readonly SiteDef[] Sites;
         public readonly Roadblock[] Roadblocks;
         public readonly Edge[] Edges;
+        public readonly Prop[] Props;      // extra cover just for this map
         public readonly int[] LotIds, FenceIds;  // what to build (the map plus a ring of scenery around it)
 
         public MapDef(string name, string note, string attackerStreet, float[] area, float[] attackers, float[] defenders,
-            SiteDef[] sites, Roadblock[] roadblocks, Edge[] edges, int[] lots, int[] fences)
+            SiteDef[] sites, Roadblock[] roadblocks, Edge[] edges, Prop[] props, int[] lots, int[] fences)
         {
             Name = name; Note = note; AttackerStreet = attackerStreet;
             Area = LotRec.Pts(area);
             Attackers = LotRec.V(attackers); Defenders = LotRec.V(defenders);
-            Sites = sites; Roadblocks = roadblocks; Edges = edges; LotIds = lots; FenceIds = fences;
+            Sites = sites; Roadblocks = roadblocks; Edges = edges; Props = props; LotIds = lots; FenceIds = fences;
         }
+
+        /// True for a map drawn from a blank page (Tools/blueprint.py): no Maple Park
+        /// streets or lots, everything on it is one of its Props.
+        public bool Blueprint { get { return LotIds.Length == 0; } }
 
         /// True when a point (seen from above) is inside the play area.
         public bool Contains(Vector2 p)

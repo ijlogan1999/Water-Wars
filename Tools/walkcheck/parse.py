@@ -27,7 +27,7 @@ def block(name):
     return floats(s[j+1:k])
 fences=block('Fences'); gates=block('Gates'); parktrees=block('ParkTrees')
 maps=[]
-for m in re.finditer(r'new MapDef\("([^"]+)", "([^"]*)", "([^"]+)",\n(.*?\d)\}\),?\n',s,re.S):
+for m in re.finditer(r'new MapDef\("([^"]+)", "([^"]*)", "([^"]+)",\n(.*?)\}\),?\n',s,re.S):
     body=m.group(4)
     lines=[l.strip() for l in body.split('\n') if l.strip()]
     area=floats(lines[0].replace('new float[]',''))
@@ -35,8 +35,9 @@ for m in re.finditer(r'new MapDef\("([^"]+)", "([^"]*)", "([^"]+)",\n(.*?\d)\}\)
     sites=[(a,k,int(l),floats(c),float(r.rstrip('f'))) for a,k,l,c,r in re.findall(r'new SiteDef\("([^"]+)",SiteKind\.(\w+),(-?\d+),new float\[\]\{([^}]*)\},([\d.]+f?)\)',lines[2])]
     rbs=[(k,floats(a),floats(d)) for k,a,d in re.findall(r'Roadblock\.Kind\.(\w+),new float\[\]\{([^}]*)\},new float\[\]\{([^}]*)\}',lines[3])]
     edges=[(floats(a),floats(b),k) for a,b,k in re.findall(r'new Edge\(new float\[\]\{([^}]*)\},new float\[\]\{([^}]*)\},Edge\.Kind\.(\w+)\)',lines[4])]
-    lotids=[int(x) for x in re.findall(r'\d+',lines[5].replace('new int[]',''))]
-    fenceids=[int(x) for x in re.findall(r'\d+',lines[6].replace('new int[]',''))]
-    maps.append(dict(name=m.group(1),area=area,att=att,dfn=dfn,sites=sites,rbs=rbs,edges=edges,lots=lotids,fences=fenceids))
+    props=[(k.lower(),)+tuple(floats(v)) for k,v in re.findall(r'Prop\.Kind\.(\w+),new float\[\]\{([^}]*)\}',lines[5])]
+    lotids=[int(x) for x in re.findall(r'\d+',lines[6].replace('new int[]',''))]
+    fenceids=[int(x) for x in re.findall(r'\d+',lines[7].replace('new int[]',''))]
+    maps.append(dict(name=m.group(1),area=area,att=att,dfn=dfn,sites=sites,rbs=rbs,edges=edges,props=props,lots=lotids,fences=fenceids))
 if __name__=='__main__':
     print(len(lots),len(fences)//5,len(gates)//4,len(maps),[m['name'] for m in maps],[len(m['edges']) for m in maps])

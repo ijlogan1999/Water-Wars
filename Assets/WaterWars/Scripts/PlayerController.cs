@@ -48,7 +48,7 @@ namespace WaterWars
             var camGo = new GameObject("Player Camera");
             camGo.transform.SetParent(kid.Eye, false);
             Cam = camGo.AddComponent<Camera>();
-            Cam.fieldOfView = 85f;
+            Cam.fieldOfView = Tuning.FieldOfView;
             Cam.nearClipPlane = 0.05f;
             camGo.AddComponent<AudioListener>();
             camGo.tag = "MainCamera";
@@ -95,9 +95,9 @@ namespace WaterWars
             // Right-click scopes in with sniper toys. Aim slows down while zoomed.
             var def = kid.Current.Def;
             kid.Zoomed = def.ZoomFov > 0f && WWInput.AimHeld() && !kid.Reloading;
-            float wantFov = kid.Zoomed ? def.ZoomFov : 85f;
+            float wantFov = kid.Zoomed ? def.ZoomFov : Tuning.FieldOfView;
             Cam.fieldOfView = Mathf.MoveTowards(Cam.fieldOfView, wantFov, Time.deltaTime * 400f);
-            Vector2 look = WWInput.MouseDelta() * MouseSensitivity * (Cam.fieldOfView / 85f);
+            Vector2 look = WWInput.MouseDelta() * MouseSensitivity * (Cam.fieldOfView / Tuning.FieldOfView);
             yaw += look.x;
             pitch = Mathf.Clamp(pitch - look.y, -88f, 88f);
             // Disoriented (barked at, shoved): your view sways on its own.
@@ -201,7 +201,7 @@ namespace WaterWars
         {
             var rm = RoundManager.Instance;
             spectating = true;
-            Cam.fieldOfView = 85f;
+            Cam.fieldOfView = Tuning.FieldOfView;
             var mates = rm.Kids.FindAll(k => k.Team == kid.Team && k.Alive && k != kid);
             if (WWInput.FirePressed()) spectateIndex++;
             if (mates.Count == 0)

@@ -40,7 +40,7 @@ namespace WaterWars
         public static bool SpotIsFree(Vector3 p)
         {
             return !Physics.CheckCapsule(p + Vector3.up * 0.55f, p + Vector3.up * 1.5f, KidRadius,
-                Shapes.ShotMask, QueryTriggerInteraction.Ignore);
+                Shapes.WalkMask, QueryTriggerInteraction.Ignore);
         }
 
         /// True when a kid could walk in a straight line from a to b without bumping into anything.
@@ -52,7 +52,7 @@ namespace WaterWars
             float len = d.magnitude;
             if (len < 0.01f) return true;
             return !Physics.SphereCast(from, KidRadius * 0.9f, d / len, out _, len,
-                Shapes.ShotMask, QueryTriggerInteraction.Ignore);
+                Shapes.WalkMask, QueryTriggerInteraction.Ignore);
         }
 
         /// Fill a rectangle of ground (y = 0) with stones every `spacing` meters.
